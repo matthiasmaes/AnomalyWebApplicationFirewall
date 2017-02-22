@@ -11,7 +11,7 @@ from pymongo import MongoClient
 from optparse import OptionParser
 
 # Private classes
-import record
+from record import Record
 from connection import Connection
 
 
@@ -31,6 +31,8 @@ parser.add_option("-d", "--debug", action="store_true", dest="debug", default=Fa
 parser.add_option("-l", "--log", action="store", dest="log", default="input/FormattedBigLog.min.txt", help="Input log file for profiler")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="2", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="100", help="Max lines per thread")
+parser.add_option("-m", "--mongo", action="store", dest="outputMongo", default="test", help="Input via mongo")
+parser.add_option
 options, args = parser.parse_args()
 ######################
 
@@ -44,13 +46,12 @@ outputActivityPath = "output/" + initTime + "/activity.txt"
 
 #### Init DB ####
 MongoDB = MongoClient().WAF[initTime + '_Profile']
+InputMongoDB = MongoClient().FormattedLogs[options.outputMongo]
 #################
 
 
 #### Determening lines ####
-with open(options.log) as f:
-	num_lines = sum(1 for line in f)
-linesPerThread = num_lines / int(options.threads)
+num_lines = InputMongoDB.count()
 ###########################
 
 
@@ -69,10 +70,14 @@ bar.start()
 
 
 def processLine(lines, index):
-	for line in lines:
-		splittedLineFromLog = line.replace('\"', '').replace('\n','').split(' ')
-		newRecord = record.Record(splittedLineFromLog[5], splittedLineFromLog[6], splittedLineFromLog[8], splittedLineFromLog[9])
-		connectionTime = (splittedLineFromLog[3].replace('[', '').replace('/', ':').split(':'))[3]
+	for inputLine in lines:
+
+
+
+		newRecord = Record(inputLine['method'], inputLine['url'], inputLine['code'], inputLine['size'])
+
+
+		connectionTime = (inputLine['timestamp'].replace('[', '').replace('/', ':').split(':'))[3]
 
 
 
@@ -85,21 +90,17 @@ def processLine(lines, index):
 
 		userAgent, accessedBy = '', ''
 
-		for num in range(12,15):
-			try:
-				userAgent += splittedLineFromLog[num]
-			except Exception as e:
-				pass
+
 
 		if options.bot:
-			if next((True for bot in bots if userAgent in bot), False):
+			if next((True for bot in bots if inputLine['uagent'] in bot), False):
 				accessedBy = 'Bot'
 			else:
 				accessedBy = 'Human'
 		else:
 			accessedBy = 'Bot filtering disabled use: --bot'
 
-		MongoDB.update({"url": newRecord.getURL()}, {'$push': {'connection': Connection(splittedLineFromLog[0], connectionTime, options.ping, accessedBy, splittedLineFromLog[10]).__dict__}})
+		MongoDB.update({"url": newRecord.getURL()}, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
 
 		##############################
 
@@ -130,11 +131,11 @@ def processLine(lines, index):
 threads, progress, lines = [], [], list()
 
 with open(options.log) as fileobject:
-	for index, line in enumerate(fileobject, 1):
+	for index, line in enumerate(InputMongoDB.find(), 1):
 
 		lines.append(line)
 
-		if index == num_lines or index % linesPerThread == 0 or index % int(options.linesPerThread) == 0:					
+		if index == num_lines or index % int(float(options.linesPerThread)) == 0 or index % int(options.linesPerThread) == 0:					
 			
 
 			#### Hold until worker is free ####

@@ -6,21 +6,22 @@ from formattedLine import FormattedLine
 
 #### Init options ####
 parser = OptionParser()
-parser.add_option("-l", "--input", action="store", dest="input", default="input.txt", help="Input log file for profiler")
+parser.add_option("-l", "--log", action="store", dest="log", default="log.txt", help="Input log file for profiler")
 parser.add_option("-f", "--format", action="store", dest="format", default="%h %l %u %t %r %>s %b %U %{User-Agent}i", help="Format of the input log")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
+parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="100", help="Max lines per thread")
 options, args = parser.parse_args()
 ######################
 
 
 #### Init ####
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
-MongoDB = MongoClient().FormattedLogs[options.input + ' - ' + initTime]
+MongoDB = MongoClient().FormattedLogs[options.log + ' - ' + initTime]
 ##############
 
 
 #### Determening lines ####
-with open(options.input) as f:
+with open(options.log) as f:
 	num_lines = sum(1 for line in f)
 ###########################
 
@@ -41,12 +42,16 @@ def formatLine(lines):
 		cleandedLine = filter(None, [x.strip() for x in line.split('"')])
 		ip = cleandedLine[inputFormat.index('%h')]
 		timestamp = cleandedLine[inputFormat.index('%t')]
-		request = cleandedLine[inputFormat.index('%r')]
+
+		
+		method = cleandedLine[inputFormat.index('%r')].split(' ')[0]
+		requestUrl = cleandedLine[inputFormat.index('%r')].split(' ')[1]
+
 		code = cleandedLine[inputFormat.index('%>s')]
 		size = cleandedLine[inputFormat.index('%b')]
 		url = cleandedLine[inputFormat.index('%U')]
 		uagent = cleandedLine[inputFormat.index('%{User-Agent}i')]
-		lineObj = FormattedLine(ip, timestamp, request, code, size, url, uagent)
+		lineObj = FormattedLine(ip, timestamp, method, requestUrl, code, size, url, uagent)
 		MongoDB.insert_one(lineObj.__dict__)
 	global activeWorkers
 	activeWorkers -= 1
@@ -54,10 +59,10 @@ def formatLine(lines):
 
 lines = list()
 threads = []
-with open(options.input) as fileobject:
+with open(options.log) as fileobject:
 	for index, line in enumerate(fileobject, 1):
 		lines.append(line)
-		if index % 500 == 0 or index == num_lines:
+		if index % int(float(options.linesPerThread)) == 0 or index == num_lines:
 
 			while str(activeWorkers) == str(options.threads):
 				pass
