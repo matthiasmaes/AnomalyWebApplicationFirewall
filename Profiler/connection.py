@@ -23,3 +23,6 @@ class Connection:
 		self.connectionDay = connectionDay
 		self.typeConn = typeConn
 		self.orgURL = orgURL
+
+	def getLocation(self):
+		return self.location

@@ -31,12 +31,6 @@ parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="t
 options, args = parser.parse_args()
 
 
-#### Init output ####
-newpath = "output/" + initTime
-outputProfilePath = "output/" + initTime + "/profile.txt"
-outputActivityPath = "output/" + initTime + "/activity.txt"
-
-
 #### Init DB ####
 OutputMongoDB = MongoClient().WAF[initTime + '_Profile']
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
@@ -44,12 +38,11 @@ InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 #### Determening lines ####
 num_lines = InputMongoDB.count()
-print num_lines
 
 
 #### Reading bot file ####
 if options.bot:
-	with open('input/bots.txt') as f:
+	with open('sources/bots.txt') as f:
 		bots = f.readlines()
 	bots = [x.strip() for x in bots]
 
@@ -59,15 +52,11 @@ bar = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[
 bar.start()
 
 
-
-
-
 def processLine(start, index):
-
-
 
 	for record in xrange(start, start + int(options.linesPerThread)):
 		
+		#### Get record based on index ####
 		inputLine = InputMongoDB.find_one({'index': record})
 
 		#### Break loop if index is not found ####
@@ -80,7 +69,7 @@ def processLine(start, index):
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]		
 
 		#### Add document on first occurance  ####
-		if OutputMongoDB.find({"url": inputLine['url'] }).count() == 0:
+		if OutputMongoDB.find({'index': record}).count() == 0:
 			OutputMongoDB.insert_one((Record(inputLine['method'], inputLine['url'], inputLine['code'], inputLine['size'])).__dict__)		
 
 		#### Filter accessor based on uagent ####
@@ -94,13 +83,10 @@ def processLine(start, index):
 			accessedBy = 'Bot filtering disabled use: --bot'		
 
 		#### Add connection to url ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
+		OutputMongoDB.update({'index': record}, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
 		
 		#### Add activity from connection ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})	
-
-
-
+		OutputMongoDB.update({'index': record}, {'$inc': { 'activity.' + connectionDay: 1 }})
 
 		#### Update progress ####
 		global converted
@@ -132,35 +118,29 @@ for index in xrange(0, loops):
 
 	#### Hold until worker is free ####
 	while str(activeWorkers) == str(options.threads):
-		pass	
-
+		pass
 
 	#### Start of worker ####
 	activeWorkers += 1
 	t = threading.Thread(target=processLine, args=(startRange, index,))
 	threads.append(t)
-	t.start()	
+	t.start()
 
 	#### Set range for next thread ####
 	startRange += intLinesPerThread	
-
 
 	#### Test for eor ####
 	if endRange >= num_lines:
 		break	
 
-
 #### Wait for all workers to finish ####
 for thread in threads:
 	thread.join()
 
-
-#### Cleaning ####
+#### Finishing - Cleaning ####
 for x in OutputMongoDB.find():
 	if len(x['connection']) == 0:
 		OutputMongoDB.delete_one({'_id': x['_id']})
-
-
 bar.finish()
 
 #### Print statistics ####
