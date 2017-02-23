@@ -3,7 +3,7 @@ import dns.resolver
 
 
 class Connection:
-	def __init__(self, ip, time, ping, typeConn, orgURL):
+	def __init__(self, ip, time, connectionDay, ping, typeConn, orgURL):
 		try:
 			IP2LocObj = IP2Location.IP2Location();
 			IP2LocObj.open("sources\IP2GEODB.BIN");
@@ -20,5 +20,6 @@ class Connection:
 		self.ip = ip
 		self.location = GeoQuery
 		self.time = time
+		self.connectionDay = connectionDay
 		self.typeConn = typeConn
 		self.orgURL = orgURL
