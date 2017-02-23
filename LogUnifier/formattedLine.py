@@ -1,5 +1,6 @@
 class FormattedLine:
-	def __init__(self, ip, timestamp, method, requestUrl, code, size, url, uagent):
+	def __init__(self, index, ip, timestamp, method, requestUrl, code, size, url, uagent):
+		self.index = index
 		self.ip = ip
 		self.timestamp = timestamp
 		self.method = method

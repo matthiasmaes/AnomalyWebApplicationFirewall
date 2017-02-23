@@ -37,7 +37,8 @@ inputFormat = [x.strip() for x in inputFormat]
 activeWorkers = 0
 
 
-def formatLine(lines):
+def formatLine(lines, index):
+
 	for line in lines:
 		cleandedLine = filter(None, [x.strip() for x in line.split('"')])
 		ip = cleandedLine[inputFormat.index('%h')]
@@ -51,14 +52,17 @@ def formatLine(lines):
 		size = cleandedLine[inputFormat.index('%b')]
 		url = cleandedLine[inputFormat.index('%U')]
 		uagent = cleandedLine[inputFormat.index('%{User-Agent}i')]
-		lineObj = FormattedLine(ip, timestamp, method, requestUrl, code, size, url, uagent)
+		lineObj = FormattedLine(index, ip, timestamp, method, requestUrl, code, size, url, uagent)
 		MongoDB.insert_one(lineObj.__dict__)
+		index += 1
 	global activeWorkers
 	activeWorkers -= 1
+	
 
 
 lines = list()
 threads = []
+i = 0
 with open(options.log) as fileobject:
 	for index, line in enumerate(fileobject, 1):
 		lines.append(line)
@@ -68,7 +72,8 @@ with open(options.log) as fileobject:
 				pass
 
 			activeWorkers += 1
-			t = threading.Thread(target=formatLine, args=(lines,))
+			t = threading.Thread(target=formatLine, args=(lines,i,))
+			i += int(options.linesPerThread)
 			threads.append(t)
 			t.start()
 			lines = list()
@@ -76,6 +81,7 @@ with open(options.log) as fileobject:
 
 		bar.update(index)
 
+MongoDB.create_index("index")
 
 for thread in threads:
 	thread.join()

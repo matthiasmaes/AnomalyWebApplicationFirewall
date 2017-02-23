@@ -5,6 +5,7 @@ import datetime
 import sys
 import threading
 import calendar
+import math
 from pymongo import MongoClient
 from optparse import OptionParser
 
@@ -16,6 +17,7 @@ from connection import Connection
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
+weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 ##########################
 
 
@@ -46,6 +48,7 @@ InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 #### Determening lines ####
 num_lines = InputMongoDB.count()
+print num_lines
 ###########################
 
 
@@ -63,13 +66,29 @@ bar.start()
 ################################
 
 
-def processLine(records, index):
+
+
+
+def processLine(start, index):
+
+	end = start + int(options.linesPerThread)
+
 	
-	for inputLine in records:
+
+
+	for record in xrange(start, end):
+
+		inputLine = InputMongoDB.find_one({'index': record})
+
+		print "index: {}, record {}".format(record, inputLine)
+
+		if inputLine is None:
+			continue
+
 
 		splittedTime = (inputLine['timestamp'].replace('[', '').replace('/', ':').split(':'))
 		connectionTime = splittedTime[3]
-		connectionDay = (datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()
+		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
 
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({"url": inputLine['url'] }).count() == 0:
@@ -89,6 +108,8 @@ def processLine(records, index):
 			accessedBy = 'Bot filtering disabled use: --bot'
 
 		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
+		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})
+
 
 		##############################
 
@@ -98,7 +119,8 @@ def processLine(records, index):
 		converted += 1
 
 		if not options.debug:
-			bar.update(converted)
+			pass
+			#bar.update(converted)
 		#########################
 
 
@@ -116,28 +138,35 @@ def processLine(records, index):
 threads, progress = [], []
 startRange = 0
 endRange = int(options.linesPerThread)
-
-results = InputMongoDB.find()
-
-for index, line in enumerate(results, 1):
-
-	if index == num_lines or index % int(options.linesPerThread):
-
-		#### Hold until worker is free ####
-		while str(activeWorkers) == str(options.threads):
-			pass
-		###################################
+intLinesPerThread = int(options.linesPerThread)
+loops = int(math.ceil(float(num_lines)/float(intLinesPerThread)))
 
 
-		#### Start of worker ####
-		activeWorkers += 1
-		t = threading.Thread(target=processLine, args=(InputMongoDB.find()[startRange:endRange], index,))
-		threads.append(t)
-		t.start()
-		#########################
+for index in xrange(0, loops):
 
-		startRange = endRange
-		endRange += int(options.linesPerThread)
+	print index
+
+
+	
+
+	#### Hold until worker is free ####
+	while str(activeWorkers) == str(options.threads):
+		pass
+	###################################
+
+
+	#### Start of worker ####
+	activeWorkers += 1
+	t = threading.Thread(target=processLine, args=(startRange, index,))
+	threads.append(t)
+	t.start()
+	#########################
+
+	# print "Start: {} - End: {}".format(startRange, endRange)
+	startRange += intLinesPerThread
+	# print "Start: {} - End: {}".format(startRange, endRange)
+	if endRange >= num_lines:
+		break
 
 ############################################
 

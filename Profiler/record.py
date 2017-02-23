@@ -9,6 +9,7 @@ class Record:
 		self.expected_code = expected_code
 		self.expected_size = expected_size
 		self.connection = []
+		self.activity = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
 
 	def __eq__(self, other):
 		return self.url == other.url
