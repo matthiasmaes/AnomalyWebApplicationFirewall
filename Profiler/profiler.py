@@ -64,8 +64,10 @@ bar.start()
 
 def processLine(start, index):
 
-	for record in xrange(start, start + int(options.linesPerThread)):
 
+
+	for record in xrange(start, start + int(options.linesPerThread)):
+		
 		inputLine = InputMongoDB.find_one({'index': record})
 
 		#### Break loop if index is not found ####
@@ -95,7 +97,9 @@ def processLine(start, index):
 		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
 		
 		#### Add activity from connection ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})		
+		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})	
+
+
 
 
 		#### Update progress ####
@@ -103,8 +107,7 @@ def processLine(start, index):
 		converted += 1
 
 		if not options.debug:
-			pass
-			#bar.update(converted)		
+			bar.update(converted)		
 
 
 		global activeWorkers
@@ -150,6 +153,13 @@ for index in xrange(0, loops):
 #### Wait for all workers to finish ####
 for thread in threads:
 	thread.join()
+
+
+#### Cleaning ####
+for x in OutputMongoDB.find():
+	if len(x['connection']) == 0:
+		OutputMongoDB.delete_one({'_id': x['_id']})
+
 
 bar.finish()
 
