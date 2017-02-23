@@ -14,3 +14,31 @@ Development of an anomaly based web application firewall
 | --linesperthread | -x | Maximum lines per thread | ✔ | ✔ |
 | --format | -f | Format input log | ✘ | ✔ |
 | --mongo | -m | Define mongo collection input | ✔ | ✘ |
+
+
+
+
+## Unifier
+### Description
+This script is used to unify access logs. The only prerequisites are that the nessesary parameters are logged and that all of the parameters are surrounded with double quotes. The outpout is saved in MongoDB which will be used as input for other scripts.
+
+### Usage
+`unifier -l [-t] [-x] [-f]`
+
+### Example
+`unifier -l input/log.txt`
+
+
+
+## Profiler
+### Description
+This script is used to profile the unified script. It takes input from a given collection (MongoDB), output is also stored in MongoDB
+
+### Usage
+`profiler -m [-p] [-b] [-d] [-t] [-x]`
+
+### Example
+`profiler -m mongoCollection`
+
+
+
