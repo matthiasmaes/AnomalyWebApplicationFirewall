@@ -2,6 +2,7 @@
 import json
 import progressbar
 import datetime
+import sys
 import threading
 from pymongo import MongoClient
 from optparse import OptionParser
@@ -22,9 +23,10 @@ parser = OptionParser()
 parser.add_option("-p", "--ping", action="store_true", dest="ping", default=False, help="Try to resolve originating domains to ip for geolocation")
 parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False, help="Filter search engine bots")
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-parser.add_option("-t", "--threads", action="store", dest="threads", default="2", help="Amout of threats that can be used")
-parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="100", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="outputMongo", default="test", help="Input via mongo")
+parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
+parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="testCase", help="Input via mongo")
+parser.add_option("-s", "--stop", action="store", dest="stopIndex", default="500", help="Only process certain amount of records")
 options, args = parser.parse_args()
 ######################
 
@@ -37,8 +39,8 @@ outputActivityPath = "output/" + initTime + "/activity.txt"
 
 
 #### Init DB ####
-MongoDB = MongoClient().WAF[initTime + '_Profile']
-InputMongoDB = MongoClient().FormattedLogs[options.outputMongo]
+OutputMongoDB = MongoClient().WAF[initTime + '_Profile']
+InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 #################
 
 
@@ -61,16 +63,16 @@ bar.start()
 ################################
 
 
-def processLine(lines, index):
-	for inputLine in lines:
+def processLine(records, index):
+	
+	for inputLine in records:
 
 		
-
 		connectionTime = (inputLine['timestamp'].replace('[', '').replace('/', ':').split(':'))[3]
 
 		#### Add document on first occurance  ####
-		if MongoDB.find({"url": inputLine['url'] }).count() == 0:
-			MongoDB.insert_one((Record(inputLine['method'], inputLine['url'], inputLine['code'], inputLine['size'])).__dict__)
+		if OutputMongoDB.find({"url": inputLine['url'] }).count() == 0:
+			OutputMongoDB.insert_one((Record(inputLine['method'], inputLine['url'], inputLine['code'], inputLine['size'])).__dict__)
 		##########################################
 
 		#### Add Connection to db ####
@@ -85,7 +87,7 @@ def processLine(lines, index):
 		else:
 			accessedBy = 'Bot filtering disabled use: --bot'
 
-		MongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
+		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
 
 		##############################
 
@@ -116,13 +118,20 @@ def processLine(lines, index):
 ###########################################
 
 #### Prepare workload and send to worker ####
-threads, progress, lines = [], [], list()
+threads, progress = [], []
+startRange = 0
+endRange = int(options.linesPerThread)
 
-for index, line in enumerate(InputMongoDB.find(), 1):
+results = InputMongoDB.find()
 
-	lines.append(line)
+for index, line in enumerate(results, 1):
 
-	if index == num_lines or index % int(float(options.linesPerThread)) == 0 or index % int(options.linesPerThread) == 0:					
+
+	if index == int(options.stopIndex):
+		sys.exit()
+
+	if index == num_lines or index % int(options.linesPerThread) == 0:
+
 		
 
 		#### Hold until worker is free ####
@@ -133,13 +142,14 @@ for index, line in enumerate(InputMongoDB.find(), 1):
 
 		#### Start of worker ####
 		activeWorkers += 1
-		t = threading.Thread(target=processLine, args=(lines,index,))
+		t = threading.Thread(target=processLine, args=(InputMongoDB.find()[startRange:endRange], index,))
 		threads.append(t)
 		t.start()
 		#########################
 
+		startRange = endRange
+		endRange += int(options.linesPerThread)
 
-		lines = list()
 ############################################
 
 
