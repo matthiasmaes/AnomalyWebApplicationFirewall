@@ -1,3 +1,6 @@
+[![Code Health](https://landscape.io/github/matthiasmaes/AnomalyWebApplicationFirewall/master/landscape.svg?style=flat)](https://landscape.io/github/matthiasmaes/AnomalyWebApplicationFirewall/master)
+
+
 # AnomalyWebApplicationFirewall
 Development of an anomaly based web application firewall
 
