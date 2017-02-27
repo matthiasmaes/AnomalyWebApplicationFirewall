@@ -14,7 +14,7 @@ def print_time( threadName, delay):
 try:
    thread.start_new_thread( print_time, ("Thread-1", 2, ) )
    thread.start_new_thread( print_time, ("Thread-2", 4, ) )
-except:
+except Exception:
    print "Error: unable to start thread"
 
 while 1:
