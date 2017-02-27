@@ -1,7 +1,4 @@
-
-import connection
-import socket
-class Record:
+class Record(object):
 
 	def __init__(self, expected_method, url, expected_code, expected_size):
 		self.url = url
