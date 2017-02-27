@@ -32,7 +32,7 @@ options, args = parser.parse_args()
 
 
 #### Init DB ####
-OutputMongoDB = MongoClient().WAF[initTime + '_Profile']
+OutputMongoDB = MongoClient().Profiles[initTime + '_Profile']
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 
