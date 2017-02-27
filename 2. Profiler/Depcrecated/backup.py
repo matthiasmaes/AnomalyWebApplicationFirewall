@@ -1,13 +1,6 @@
 # Public classes
-import re
-import string
-import json
-import requests
-import sys
 import progressbar
-import IP2Location
 import datetime
-import os
 import thread
 from pymongo import MongoClient
 from optparse import OptionParser

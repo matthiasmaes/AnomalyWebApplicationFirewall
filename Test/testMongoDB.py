@@ -3,8 +3,6 @@ from pymongo import MongoClient
 
 import datetime
 
-
-client = 
 collection = MongoClient().Test.testCol
 
 

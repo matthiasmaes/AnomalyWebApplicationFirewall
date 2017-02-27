@@ -1,4 +1,4 @@
-import json, datetime, progressbar, threading
+import datetime, progressbar, threading
 from pymongo import MongoClient
 from optparse import OptionParser
 from formattedLine import FormattedLine
