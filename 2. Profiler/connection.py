@@ -2,7 +2,7 @@ import IP2Location
 import dns.resolver
 
 
-class Connection:
+class Connection(object):
 	def __init__(self, ip, time, connectionDay, ping, typeConn, orgURL):
 		try:
 			IP2LocObj = IP2Location.IP2Location();
@@ -12,7 +12,7 @@ class Connection:
 			if ping:
 				try:
 					GeoQuery = IP2LocObj.get_all(dns.resolver.query(ip, 'A')[0]).country_long;
-				except Exception as e:
+				except Exception:
 					GeoQuery = "Geolocation failed"
 			else:
 				GeoQuery = "Domain translation disabled"

@@ -1,5 +1,4 @@
 from pymongo import MongoClient
-import ast, json
 
 
 #MongoDB = MongoClient().FormattedLogs['Profiler\input\FormattedBigLog.txt - 17_2_36']

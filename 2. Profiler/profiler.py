@@ -1,8 +1,6 @@
 # Public classes
-import json
 import progressbar
 import datetime
-import sys
 import threading
 import calendar
 import math
