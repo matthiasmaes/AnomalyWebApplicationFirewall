@@ -31,7 +31,7 @@ for packet in StreamMongoDB.find():
 
 		#### Keep counter on unknown locations ####
 		if TmpMongoDB.find({'Location': GeoQuery}).count() == 0:
-			TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0})
+			TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0, 'Level' : 'Untrusted'})
 		TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
 
 
@@ -41,7 +41,31 @@ for packet in StreamMongoDB.find():
 		else:
 			print 'At least suspicious'
 
+
 	else:
+
+		#### Keep counter on unknown locations ####
+		if TmpMongoDB.find({'Location': GeoQuery}).count() == 0:
+			TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0, 'Level' : 'Trusted'})
+		TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
+
+
 
 		#### Geo safe ####
 		print 'Geolocation passed: {}'.format(GeoQuery)
+
+
+
+
+
+
+
+
+
+	totalOccurance = 0
+
+	for x in TmpMongoDB.find({'Level' : 'Trusted'}):
+		totalOccurance += x['Occurance']
+
+	for x in TmpMongoDB.find({'Level' : 'Trusted'}):	
+			TmpMongoDB.update({'Location': x['Location']},{'$set' : {'Occurance': 15 }})
