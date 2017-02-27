@@ -27,7 +27,7 @@ parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False,
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="testCase", help="Input via mongo")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="testCase.min", help="Input via mongo")
 options, args = parser.parse_args()
 
 
@@ -62,14 +62,16 @@ def processLine(start, index):
 		#### Break loop if index is not found ####
 		if inputLine is None:
 			continue		
-
+		print 'passed : {}'.format(inputLine)
 		#### Format time ####
 		splittedTime = (inputLine['timestamp'].replace('[', '').replace('/', ':').split(':'))
 		connectionTime = splittedTime[3]
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]		
 
+
+
 		#### Add document on first occurance  ####
-		if OutputMongoDB.find({'index': record}).count() == 0:
+		if OutputMongoDB.find({'url': inputLine['url']}).count() == 0:
 			OutputMongoDB.insert_one((Record(inputLine['method'], inputLine['url'], inputLine['code'], inputLine['size'])).__dict__)		
 
 		#### Filter accessor based on uagent ####
@@ -82,11 +84,13 @@ def processLine(start, index):
 		else:
 			accessedBy = 'Bot filtering disabled use: --bot'		
 
+
+
 		#### Add connection to url ####
-		OutputMongoDB.update({'index': record}, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
+		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl']).__dict__}})
 		
 		#### Add activity from connection ####
-		OutputMongoDB.update({'index': record}, {'$inc': { 'activity.' + connectionDay: 1 }})
+		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})
 
 		#### Update progress ####
 		global converted
