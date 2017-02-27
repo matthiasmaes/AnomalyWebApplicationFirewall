@@ -23,7 +23,5 @@ MongoDB = MongoClient().WAF['13_56_54_Profile']
 
 
 for x in MongoDB.find():
-	if len(x['connection']) == 0:
-		result = MongoDB.delete_one({'_id': x['_id']})
-		print result.deleted_count
+	
 
