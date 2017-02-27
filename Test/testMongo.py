@@ -19,9 +19,3 @@ MongoDB = MongoClient().WAF['13_56_54_Profile']
 
 
 # MongoDB.create_index("index")
-
-
-
-for x in MongoDB.find():
-	
-

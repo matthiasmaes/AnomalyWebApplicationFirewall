@@ -8,7 +8,7 @@ class Connection:
 			IP2LocObj = IP2Location.IP2Location();
 			IP2LocObj.open("sources\IP2GEODB.BIN");
 			GeoQuery = IP2LocObj.get_all(ip).country_long;
-		except Exceptions:
+		except Exception:
 			if ping:
 				try:
 					GeoQuery = IP2LocObj.get_all(dns.resolver.query(ip, 'A')[0]).country_long;
