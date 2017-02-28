@@ -151,7 +151,7 @@ for x in OutputMongoDB.find():
 		continue
 
 	for location in x['location']:
-		OutputMongoDB.update({"url": x['url']} , {'$set': { 'location.' + location: int((float(x['location'][location]) / float(len(x['connection'])))*100) }})
+		OutputMongoDB.update({"url": x['url']} , {'$set': { 'location.' + location: (float(x['location'][location]) / float(len(x['connection']))) }})
 
 progressBarObj.finish()
 

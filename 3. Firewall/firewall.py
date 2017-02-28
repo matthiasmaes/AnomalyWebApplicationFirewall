@@ -50,7 +50,6 @@ for packet in StreamMongoDB.find():
 		TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
 
 
-
 		#### Geo safe ####
 		print 'Geolocation passed: {}'.format(GeoQuery)
 
@@ -60,12 +59,13 @@ for packet in StreamMongoDB.find():
 
 
 
-
-
+	#### Determine ratio ####
 	totalOccurance = 0
 
 	for x in TmpMongoDB.find({'Level' : 'Trusted'}):
 		totalOccurance += x['Occurance']
 
+
+	print totalOccurance
 	for x in TmpMongoDB.find({'Level' : 'Trusted'}):	
-			TmpMongoDB.update({'Location': x['Location']},{'$set' : {'Occurance': 15 }})
+		TmpMongoDB.update({'Location': x['Location']},{'$set' : {'Ratio': float(x['Occurance']) / float(totalOccurance)}})
