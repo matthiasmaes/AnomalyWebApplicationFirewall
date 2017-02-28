@@ -38,6 +38,7 @@ activeWorkers = 0
 
 
 def formatLine(lines, index):
+	""" Format lines into unified object """
 
 	for line in lines:
 		cleandedLine = filter(None, [x.strip() for x in line.split('"')])

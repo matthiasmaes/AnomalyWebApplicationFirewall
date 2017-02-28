@@ -18,7 +18,14 @@ options, args = parser.parse_args()
 
 
 
-def CheckGeoLocation():
+def CheckGeoLocation(packet):
+    """Check for anomalies in geolocation"""
+
+	#### Test if var is definded ####
+	try:
+		packet
+	except NameError:
+		pass
 	
 	#### Geo locate ip address ####
 	IP2LocObj = IP2Location.IP2Location();
@@ -54,9 +61,11 @@ def CheckGeoLocation():
 	#### Determine ratio ####
 	totalOccurance = 0
 
+	#### Get total occurances from trusted location ####
 	for x in TmpMongoDB.find({'Level' : 'Trusted'}):
 		totalOccurance += x['Occurance']
 
+	#### Calculate ratio for every location ####
 	for x in TmpMongoDB.find({'Level' : 'Trusted'}):	
 
 		ratio = float(x['Occurance']) / float(totalOccurance)
@@ -70,13 +79,7 @@ def CheckGeoLocation():
 			print '[Alert] Ratio treshold has been exceeded ({})'.format(x['Location'])
 
 
-
-
-
-
-
-
-
+#### Main method ####
 if __name__ == '__main__':
 	for packet in StreamMongoDB.find():
 		CheckGeoLocation(packet)

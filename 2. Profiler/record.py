@@ -1,4 +1,5 @@
 class Record(object):
+	""" Record in profile """
 
 	def __init__(self, expected_method, url, expected_code, expected_size):
 		self.url = url
@@ -11,10 +12,13 @@ class Record(object):
 
 
 	def __eq__(self, other):
+		""" Test if records are equal """
 		return self.url == other.url
 
 	def getIP(self):
+		""" Get IP-Address """
 		return self.ip
 
 	def getURL(self):
+		""" Get URL """
 		return self.url

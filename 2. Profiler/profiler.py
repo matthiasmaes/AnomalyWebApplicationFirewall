@@ -53,6 +53,7 @@ progressBarObj.start()
 
 
 def processLine(start, index):
+	""" Assign workers with workload """
 
 	for record in xrange(start, start + int(options.linesPerThread)):
 		
