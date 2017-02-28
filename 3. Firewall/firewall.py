@@ -18,15 +18,11 @@ options, args = parser.parse_args()
 
 
 
-def CheckGeoLocation(packet):
-    """Check for anomalies in geolocation"""
-
 	#### Test if var is definded ####
 	try:
 		packet
 	except NameError:
 		packet = 'Null'
-	
 	#### Geo locate ip address ####
 	IP2LocObj = IP2Location.IP2Location();
 	IP2LocObj.open('C:/Users/bebxadvmmae/Desktop/REMOTE/2. Profiler/sources/IP2GEODB.BIN');
