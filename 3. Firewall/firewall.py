@@ -57,7 +57,7 @@ def CheckGeoLocation(packet):
 		InsertDocument(GeoQuery, packet['url'], 'Untrusted')
 		TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
 
-		#### If connections counter exceed treshold, take appropriate connection ####
+		#### If connections counter exceed threshold, take appropriate connection ####
 		if (TmpMongoDB.find_one({'Location': GeoQuery}))['Occurance'] > int(options.unfamiliarThreshold):
 			print '[ALERT] Unfamiliar location is making a lot of requests ({})'.format(GeoQuery)
 		else:
@@ -85,10 +85,10 @@ def CheckGeoLocation(packet):
 		#??# Does this need to be stored in the db?
 		TmpMongoDB.update({'Location': x['Location'], 'url' : x['url']},{'$set' : {'Ratio': ratio}})
 
-		ratioDiff =  (ProfileMongoDB.find_one({'url' : x['url']}))['location'][x['Location']] - ratio
+		ratioDiff = (ProfileMongoDB.find_one({'url' : x['url']}))['location'][x['Location']] - ratio
 
 		if ratioDiff > float(options.ratioThreshold):
-			print '[Alert] Ratio treshold has been exceeded ({})'.format(x['Location'])
+			print '[Alert] Ratio threshold has been exceeded ({})'.format(x['Location'])
 
 
 
@@ -99,12 +99,17 @@ def CheckActivity(packet):
 	TmpMongoDB.update({ 'Location': GeoQuery, 'url' : packet['url'] }, {'$inc': { 'activity.' + packet['time']: 1 }})
 
 	for activityDay in activity:
-		productionConnections = TmpMongoDB.find_one({ 'Location': GeoQuery, 'url' : packet['url'] })['activity'][activityDay]
+
+		#### Get all connections frome same url ####
+		productionConnections = 0
+		for x in TmpMongoDB.find({ 'url' : packet['url'] }):
+			productionConnections += x['activity'][activityDay]
+
 		profileConnections = ProfileMongoDB.find_one({'url' : packet['url']})['activity'][activityDay]
 
+		#### Test for threshold ####
 		if productionConnections - profileConnections > options.activityThreshold:
-			if packet['url'] == '/admin/shop.html':
-				print '[Alert] Activity treshold has been exceeded ({})'.format(packet['url'])
+			print '[Alert] Activity threshold has been exceeded ({})'.format(packet['url'])
 
 
 
