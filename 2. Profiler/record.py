@@ -7,7 +7,7 @@ class Record(object):
 		self.expected_code = expected_code
 		self.expected_size = expected_size
 		self.connection = []
-		self.locations = {}
+		self.location = {}
 		self.activity = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
 
 
