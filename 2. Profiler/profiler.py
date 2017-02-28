@@ -48,8 +48,8 @@ if options.bot:
 
 
 #### Preparing progress bar ####
-bar = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-bar.start()
+progressBarObj = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+progressBarObj.start()
 
 
 def processLine(start, index):
@@ -99,7 +99,7 @@ def processLine(start, index):
 		converted += 1
 
 		if not options.debug:
-			bar.update(converted)		
+			progressBarObj.update(converted)		
 
 
 		global activeWorkers
@@ -153,7 +153,7 @@ for x in OutputMongoDB.find():
 	for location in x['location']:
 		OutputMongoDB.update({"url": x['url']} , {'$set': { 'location.' + location: int((float(x['location'][location]) / float(len(x['connection'])))*100) }})
 
-bar.finish()
+progressBarObj.finish()
 
 #### Print statistics ####
 print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))

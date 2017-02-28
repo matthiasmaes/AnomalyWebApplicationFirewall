@@ -27,8 +27,8 @@ with open(options.log) as f:
 
 
 #### Preparing progress bar ####
-bar = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
-bar.start()
+progressBarObj = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+progressBarObj.start()
 ################################
 
 inputFormat = options.format.split(' ')
@@ -79,11 +79,11 @@ with open(options.log) as fileobject:
 			lines = list()
 
 
-		bar.update(index)
+		progressBarObj.update(index)
 
 MongoDB.create_index("index")
 
 for thread in threads:
 	thread.join()
 
-bar.finish()
+progressBarObj.finish()
