@@ -9,15 +9,13 @@ StreamMongoDB = MongoClient().Firewall.TestStream
 TmpMongoDB = MongoClient().Firewall.tmp
 ProfileMongoDB = MongoClient().Profiles['10_9_15_Profile']
 
-
 activity = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
-
-
-
 
 parser = OptionParser()
 parser.add_option("-u", "--unfamiliar", action="store", dest="unfamiliarThreshold", default="5", help="Threshold for unfamiliar locations")
 parser.add_option("-r", "--ratio", action="store", dest="ratioThreshold", default="0.15", help="Threshold for location ratio")
+parser.add_option("-a", "--activity", action="store", dest="activityThreshold", default="10", help="Threshold for activity/day")
+
 options, args = parser.parse_args()
 
 
@@ -27,6 +25,11 @@ def GeoQueryLocal(ip):
 	IP2LocObj = IP2Location.IP2Location();
 	IP2LocObj.open('C:/Users/bebxadvmmae/Desktop/REMOTE/2. Profiler/sources/IP2GEODB.BIN');
 	return IP2LocObj.get_all(ip).country_long;
+
+def InsertDocument(location, url, level):
+	if TmpMongoDB.find({'Location': location, 'url' : url}).count() == 0:
+		TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0, 'Level' : level, 'url' : url, 'activity': activity})
+	
 
 
 
@@ -43,20 +46,15 @@ def CheckGeoLocation(packet):
 	#### Check for geolocation ####
 	if ConfigMongoDB.find({'Category': 'Location', 'Data': GeoQuery}).count() > 0:
 
-		#### If location is in black list take appropriate action ####
-		if (ConfigMongoDB.find_one({'Category': 'Location', 'Data': GeoQuery}))['Action'] == 'Alert' :
+		InsertDocument(GeoQuery, packet['url'], 'Blacklisted')
+		TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
 
-			if TmpMongoDB.find({'Location': GeoQuery, 'url' : packet['url']}).count() == 0:
-				TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0, 'Level' : 'Blacklisted', 'url' : packet['url'], 'activity': activity})
-			TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
-
-			print '[ALERT] Connection made from blacklisted country ({})'.format(GeoQuery)
+		print '[ALERT] Connection made from blacklisted country ({})'.format(GeoQuery)
 
 	elif GeoQuery not in (ProfileMongoDB.find_one({ 'url' : packet['url'] }))['location']:
 
 		#### Keep counter on unknown locations ####
-		if TmpMongoDB.find({'Location': GeoQuery, 'url' : packet['url']}).count() == 0:
-			TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0, 'Level' : 'Untrusted', 'url' : packet['url'], 'activity': activity})
+		InsertDocument(GeoQuery, packet['url'], 'Untrusted')
 		TmpMongoDB.update({'Location': GeoQuery}, {'$inc': { 'Occurance' : 1 }})
 
 		#### If connections counter exceed treshold, take appropriate connection ####
@@ -66,10 +64,11 @@ def CheckGeoLocation(packet):
 			print '[WARNING] Unfamiliar location connected ({})'.format(GeoQuery)
 	else:
 
-		#### Keep counter on unknown locations ####
-		if TmpMongoDB.find({'Location': GeoQuery, 'url' : packet['url']}).count() == 0:
-			TmpMongoDB.insert_one({'Location': GeoQuery, 'Occurance' : 0, 'Level' : 'Trusted', 'url' : packet['url'], 'activity': activity})
+		#### GEO SAFE ####
+		InsertDocument(GeoQuery, packet['url'], 'Trusted')
 		TmpMongoDB.update({'Location': GeoQuery, 'url' : packet['url']}, {'$inc': { 'Occurance' : 1 }})
+
+
 
 	#### Determine ratio ####
 	totalOccurance = 0
@@ -86,9 +85,9 @@ def CheckGeoLocation(packet):
 		#??# Does this need to be stored in the db?
 		TmpMongoDB.update({'Location': x['Location'], 'url' : x['url']},{'$set' : {'Ratio': ratio}})
 
-		ratioDiff =  ratio - (ProfileMongoDB.find_one({'url' : x['url']}))['location'][x['Location']]
+		ratioDiff =  (ProfileMongoDB.find_one({'url' : x['url']}))['location'][x['Location']] - ratio
 
-		if ratioDiff > float(options.ratioThreshold) or ratioDiff < float(options.ratioThreshold) * -1:
+		if ratioDiff > float(options.ratioThreshold):
 			print '[Alert] Ratio treshold has been exceeded ({})'.format(x['Location'])
 
 
@@ -103,12 +102,9 @@ def CheckActivity(packet):
 		productionConnections = TmpMongoDB.find_one({ 'Location': GeoQuery, 'url' : packet['url'] })['activity'][activityDay]
 		profileConnections = ProfileMongoDB.find_one({'url' : packet['url']})['activity'][activityDay]
 
-		if productionConnections - profileConnections > 5:
+		if productionConnections - profileConnections > options.activityThreshold:
 			if packet['url'] == '/admin/shop.html':
 				print '[Alert] Activity treshold has been exceeded ({})'.format(packet['url'])
-
-
-
 
 
 
