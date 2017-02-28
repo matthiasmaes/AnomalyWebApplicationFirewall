@@ -1,8 +1,9 @@
 import IP2Location
 import dns.resolver
 
-
 class Connection(object):
+	""" Object that represents a connection, one log entry """
+	
 	def __init__(self, ip, time, connectionDay, ping, typeConn, orgURL):
 		try:
 			IP2LocObj = IP2Location.IP2Location();
@@ -25,4 +26,5 @@ class Connection(object):
 		self.orgURL = orgURL
 
 	def getLocation(self):
+		""" Get location of connection """
 		return self.location
