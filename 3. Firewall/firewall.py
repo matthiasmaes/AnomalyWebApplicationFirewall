@@ -84,7 +84,6 @@ def CheckGeoLocation(packet):
 
 	#### Get total occurances from trusted location ####
 	for x in TmpMongoDB.find({'Level' : 'Trusted', 'url' : packet['url'] }):
-
 		totalOccurance += x['Occurance']
 
 	#### Calculate ratio for every location ####
@@ -112,7 +111,6 @@ def CheckActivity(packet):
 	connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]		
 
 	TmpMongoDB.update({ 'Location': GeoQuery, 'url' : packet['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})
-	TmpMongoDB.update({ 'Location': GeoQuery, 'url' : packet['url'] }, {'$inc': { 'time.' + packet['time']: 1 }})
 
 	for activityDay in activity:
 
@@ -130,6 +128,10 @@ def CheckActivity(packet):
 
 
 
+def CheckTime(packet):
+	GeoQuery = GeoQueryLocal(packet['ip'])
+
+	TmpMongoDB.update({ 'Location': GeoQuery, 'url' : packet['url'] }, {'$inc': { 'time.' + packet['time']: 1 }})
 
 	for timeStamp in time:
 
@@ -154,3 +156,4 @@ if __name__ == '__main__':
 	for packet in StreamMongoDB.find():
 		CheckGeoLocation(packet)
 		CheckActivity(packet)
+		CheckTime(packet)
