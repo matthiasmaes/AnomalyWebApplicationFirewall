@@ -53,7 +53,7 @@ def formatLine(lines, index):
 		size = cleandedLine[inputFormat.index('%b')]
 		url = cleandedLine[inputFormat.index('%U')]
 		uagent = cleandedLine[inputFormat.index('%{User-Agent}i')]
-		lineObj = FormattedLine(index, ip, timestamp, method, requestUrl, code, size, url, uagent)
+		lineObj = FormattedLine(index, ip, timestamp, 'null', 'null', method, requestUrl, code, size, url, uagent)
 		MongoDB.insert_one(lineObj.__dict__)
 		index += 1
 	global activeWorkers
