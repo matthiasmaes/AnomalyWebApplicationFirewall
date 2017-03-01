@@ -64,6 +64,7 @@ def formatLine(lines, index):
 			index += 1
 
 		except Exception:
+			pass
 
 	global activeWorkers
 	activeWorkers -= 1
