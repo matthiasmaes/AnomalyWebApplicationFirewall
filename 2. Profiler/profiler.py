@@ -25,11 +25,9 @@ parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False,
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="BiglogArvid", help="Input via mongo")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="testCase", help="Input via mongo")
 options, args = parser.parse_args()
 
-
-print options.inputMongo
 
 #### Init DB ####
 OutputMongoDB = MongoClient().Profiles[initTime + '_Profile']
@@ -58,6 +56,8 @@ def processLine(start, index):
 	""" Assign workers with workload """
 
 	for record in xrange(start, start + int(options.linesPerThread)):
+
+		print record
 		
 		#### Get record based on index ####
 		inputLine = InputMongoDB.find_one({'index': record})
@@ -67,8 +67,7 @@ def processLine(start, index):
 			continue		
 
 		#### Format time ####
-		splittedTime = (inputLine['timestamp'].replace('[', '').replace('/', ':').split(':'))
-		connectionTime = splittedTime[3]
+		splittedTime = inputLine['date'].split('/')
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]		
 
 		#### Add document on first occurance  ####
@@ -86,13 +85,16 @@ def processLine(start, index):
 			accessedBy = 'Bot filtering disabled use: --bot'		
 
 
-		connObj =  Connection(inputLine['ip'], connectionTime, connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
+		connObj =  Connection(inputLine['ip'], inputLine['time'], connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
 
 		#### Add connection to url ####
 		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': connObj.__dict__}})
 		
 		#### Add activity from connection ####
 		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})
+
+		#### Add time from connection ####
+		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'time.' + inputLine['time']: 1 }})
 
 		#### Add location from connection ####
 		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'location.' + connObj.getLocation(): 1 }})

@@ -20,6 +20,8 @@ MongoDB = MongoClient().FormattedLogs[options.log + ' - ' + initTime]
 startTime = datetime.datetime.now()
 ##############
 
+MongoDB.create_index("index")
+print options.log
 
 #### Determening lines ####
 with open(options.log) as f:
@@ -46,7 +48,12 @@ def formatLine(lines, index):
 			cleandedLine = filter(None, [x.strip() for x in line.split('"')])
 
 			ip = cleandedLine[0].split(' ')[0]
-			timestamp = cleandedLine[0].split(' ')[3]
+			#timestamp = cleandedLine[0].split(' ')[3]
+
+
+			date = cleandedLine[0].split(' ')[3].split(':')[0].replace('[', '')
+			time = cleandedLine[0].split(' ')[3].split(':')[1]
+			timezone = cleandedLine[0].split(' ')[4].replace(']', '')
 
 
 			method = cleandedLine[1].split(' ')[0]
@@ -59,7 +66,7 @@ def formatLine(lines, index):
 			url = cleandedLine[3]
 			uagent = cleandedLine[4]
 
-			lineObj = FormattedLine(index, ip, timestamp, method, requestUrl, code, size, url, uagent)
+			lineObj = FormattedLine(index, ip, date, time, timezone, method, requestUrl, code, size, url, uagent)
 			MongoDB.insert_one(lineObj.__dict__)
 			index += 1
 
@@ -98,7 +105,7 @@ with open(options.log) as fileobject:
 for thread in threads:
 	thread.join()
 
-MongoDB.create_index("index")
+
 
 progressBarObj.finish()
 
