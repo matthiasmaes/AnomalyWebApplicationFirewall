@@ -25,9 +25,11 @@ parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False,
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="testCase.max", help="Input via mongo")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="BiglogArvid", help="Input via mongo")
 options, args = parser.parse_args()
 
+
+print options.inputMongo
 
 #### Init DB ####
 OutputMongoDB = MongoClient().Profiles[initTime + '_Profile']
