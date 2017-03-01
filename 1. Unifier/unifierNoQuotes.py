@@ -93,10 +93,12 @@ with open(options.log) as fileobject:
 
 		progressBarObj.update(index)
 
-MongoDB.create_index("index")
+
 
 for thread in threads:
 	thread.join()
+
+MongoDB.create_index("index")
 
 progressBarObj.finish()
 
