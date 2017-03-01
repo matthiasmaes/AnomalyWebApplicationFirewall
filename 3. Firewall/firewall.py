@@ -76,22 +76,27 @@ def CheckGeoLocation(packet):
 
 
 
+
+
+
 	#### Determine ratio ####
 	totalOccurance = 0
 
 	#### Get total occurances from trusted location ####
-	for x in TmpMongoDB.find({'Level' : 'Trusted'}):
+	for x in TmpMongoDB.find({'Level' : 'Trusted', 'url' : packet['url'] }):
+
 		totalOccurance += x['Occurance']
 
 	#### Calculate ratio for every location ####
-	for x in TmpMongoDB.find({'Level' : 'Trusted'}):	
+	for x in TmpMongoDB.find({'Level' : 'Trusted', 'url' : packet['url'] }):	
 
 		ratio = float(x['Occurance']) / float(totalOccurance)
 
 		#??# Does this need to be stored in the db?
 		TmpMongoDB.update({'Location': x['Location'], 'url' : x['url']},{'$set' : {'Ratio': ratio}})
 
-		ratioDiff = (ProfileMongoDB.find_one({'url' : x['url']}))['location'][x['Location']] - ratio
+
+		ratioDiff = ProfileMongoDB.find_one({'url' : x['url']})['location'][x['Location']] - ratio
 
 		if ratioDiff > float(options.ratioThreshold):
 			print '[Alert] Ratio threshold has been exceeded ({})'.format(x['Location'])
