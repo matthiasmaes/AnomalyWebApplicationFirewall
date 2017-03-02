@@ -38,9 +38,6 @@ def GeoQueryLocal(ip):
 def InsertDocument(location, url, level):
 	if TmpMongoDB.find({'Location': location, 'url' : url}).count() == 0:
 		TmpMongoDB.insert_one({'Location': location, 'Occurance' : 0, 'Level' : level, 'url' : url, 'activity': activity, 'time': time})
-	
-
-
 
 def CheckGeoLocation(packet):
 

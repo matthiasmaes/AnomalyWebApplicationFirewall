@@ -101,7 +101,6 @@ def processLine(start, index):
 
 
 
-
 		connObj =  Connection(inputLine['ip'], inputLine['time'], connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
 
 		#### Init Batch ####
