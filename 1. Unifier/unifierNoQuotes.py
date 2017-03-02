@@ -90,7 +90,6 @@ threads = []
 i = 0
 with open(options.log) as fileobject:
 	for index, line in enumerate(fileobject, startIndex):
-
 		lines.append(line)
 		if index % int(float(options.linesPerThread)) == 0 or index == num_lines or index == endIndex:
 
@@ -120,3 +119,7 @@ for thread in threads:
 progressBarObj.finish()
 
 print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))
+print("Average lines per second: {} l/s".format(int((endIndex - startIndex) / (datetime.datetime.now() - startTime).total_seconds())))
+
+if int(options.startToParse) is not 0 or int(options.procentToParse) is not 100:
+	print 'Next parse should start from index: {}. Use -s {}'.format(endIndex + 1, endIndex + 1)
