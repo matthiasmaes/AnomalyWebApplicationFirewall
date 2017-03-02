@@ -31,6 +31,7 @@ parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="a
 
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 parser.add_option("-e", "--end", action="store", dest="endindex", default="505", help="End index for profiling")
+
 options, args = parser.parse_args()
 
 
@@ -61,11 +62,8 @@ progressBarObj.start()
 def processLine(start, index):
 	""" Assign workers with workload """
 
-
 	s = start
 	e = start + int(options.linesPerThread)
-
-
 
 	for record in InputMongoDB.find()[s:e]:
 
@@ -104,12 +102,12 @@ def processLine(start, index):
 			accessedBy = 'Bot filtering disabled use: --bot'		
 
 
-		connObj =  Connection(inputLine['ip'], inputLine['time'], connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
 
+
+		connObj =  Connection(inputLine['ip'], inputLine['time'], connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
 
 		#### Init Batch ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-
 
 		#### Add connection to url ####
 		bulk.find({"url": inputLine['url'] }).update({'$push': {'connection': connObj.__dict__}})
@@ -123,13 +121,13 @@ def processLine(start, index):
 		#### Add location from connection ####
 		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'location.' + connObj.getLocation(): 1 }})
 
-
 		#### Execute batch ####
 		bulk.execute()
 
+
+
 		#### Update progress ####
 		converted += 1	
-
 
 	global activeWorkers
 	activeWorkers -= 1
@@ -163,10 +161,6 @@ for index in xrange(0, loops):
 
 	#### Set range for next thread ####
 	startRange += intLinesPerThread	
-
-	# #### Test for eof ####
-	# if endRange >= num_lines:
-	# 	break	
 
 #### Wait for all workers to finish ####
 for thread in threads:
