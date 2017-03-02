@@ -10,6 +10,8 @@ from optparse import OptionParser
 from record import Record
 from connection import Connection
 
+import sys
+
 
 #### Init global vars ####
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
@@ -25,7 +27,10 @@ parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False,
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="testCase", help="Input via mongo")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="access.log", help="Input via mongo")
+
+parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
+parser.add_option("-e", "--end", action="store", dest="endindex", default="505", help="End index for profiling")
 options, args = parser.parse_args()
 
 
@@ -35,10 +40,11 @@ InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 
 #### Determening lines ####
-num_lines = InputMongoDB.count()
+options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 
-print num_lines
+diffLines = int(options.endindex) - int(options.startIndex) + 1
 
+print diffLines
 
 #### Reading bot file ####
 if options.bot:
@@ -48,23 +54,36 @@ if options.bot:
 
 
 #### Preparing progress bar ####
-progressBarObj = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 progressBarObj.start()
 
 
 def processLine(start, index):
 	""" Assign workers with workload """
 
-	for record in xrange(start, start + int(options.linesPerThread)):
 
-		print record
-		
+	s = start
+	e = start + int(options.linesPerThread)
+
+
+
+	for record in InputMongoDB.find()[s:e]:
+
+		global converted
+
 		#### Get record based on index ####
-		inputLine = InputMongoDB.find_one({'index': record})
+		inputLine = record
 
 		#### Break loop if index is not found ####
-		if inputLine is None:
-			continue		
+		if inputLine is None: 
+			continue	
+
+		#### End if all lines were converted ####
+		if converted >= diffLines:
+			print 'break on: ' + str(converted)
+			break
+		else:
+			progressBarObj.update(converted)
 
 		#### Format time ####
 		splittedTime = inputLine['date'].split('/')
@@ -100,14 +119,10 @@ def processLine(start, index):
 		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'location.' + connObj.getLocation(): 1 }})
 
 		#### Update progress ####
-		global converted
-		converted += 1
-
-		if not options.debug:
-			progressBarObj.update(converted)		
+		converted += 1	
 
 
-		global activeWorkers
+	global activeWorkers
 	activeWorkers -= 1
 
 	if options.debug:
@@ -119,10 +134,10 @@ def processLine(start, index):
 		
 #### Prepare workload and send to worker ####
 threads, progress = [], []
-startRange = 0
+startRange = int(options.startIndex)
 endRange = int(options.linesPerThread)
 intLinesPerThread = int(options.linesPerThread)
-loops = int(math.ceil(float(num_lines)/float(intLinesPerThread)))
+loops = int(math.ceil(float(diffLines)/float(intLinesPerThread)))
 
 
 for index in xrange(0, loops):
@@ -140,9 +155,9 @@ for index in xrange(0, loops):
 	#### Set range for next thread ####
 	startRange += intLinesPerThread	
 
-	#### Test for eor ####
-	if endRange >= num_lines:
-		break	
+	# #### Test for eof ####
+	# if endRange >= num_lines:
+	# 	break	
 
 #### Wait for all workers to finish ####
 for thread in threads:
@@ -162,5 +177,5 @@ progressBarObj.finish()
 
 #### Print statistics ####
 print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))
-print("Average lines per second: {} l/s".format(int(num_lines / (datetime.datetime.now() - startTime).total_seconds())))
+print("Average lines per second: {} l/s".format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
 # TODO: More statistics
