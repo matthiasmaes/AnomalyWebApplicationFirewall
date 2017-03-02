@@ -3,13 +3,14 @@ from pymongo import MongoClient
 from optparse import OptionParser
 from formattedLine import FormattedLine
 
-
 #### Init options ####
 parser = OptionParser()
 parser.add_option("-l", "--log", action="store", dest="log", default="log.txt", help="Input log file for profiler")
 parser.add_option("-f", "--format", action="store", dest="format", default="combined", help="Format of the input log")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="12", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
+parser.add_option("-p", "--procent", action="store", dest="procentToParse", default="100", help="Set how much of the logfile to parse")
+parser.add_option("-s", "--start", action="store", dest="startToParse", default="0", help="Set line number to start parsing from")
 options, args = parser.parse_args()
 ######################
 
@@ -18,19 +19,26 @@ options, args = parser.parse_args()
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
 MongoDB = MongoClient().FormattedLogs[options.log + ' - ' + initTime]
 startTime = datetime.datetime.now()
+MongoDB.create_index("index")
 ##############
 
-MongoDB.create_index("index")
-print options.log
+
 
 #### Determening lines ####
 with open(options.log) as f:
 	num_lines = sum(1 for line in f)
+print num_lines
+linesToProcess = (num_lines * int(options.procentToParse)) / 100
+
+startIndex = int(options.startToParse)
+endIndex = num_lines if startIndex + linesToProcess > num_lines else startIndex + linesToProcess
+
+print 'Lines from {} till {} will be processed'.format(startIndex, endIndex)
 ###########################
 
 
 #### Preparing progress bar ####
-progressBarObj = progressbar.ProgressBar(maxval=num_lines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
+progressBarObj = progressbar.ProgressBar(maxval=endIndex, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 progressBarObj.start()
 ################################
 
@@ -45,11 +53,9 @@ def formatLine(lines, index):
 
 	for line in lines:
 		try:
-			cleandedLine = filter(None, [x.strip() for x in line.split('"')])
+			cleandedLine = filter(None, [x.strip() for x in line.replace('""','"-"').split('"')])
 
 			ip = cleandedLine[0].split(' ')[0]
-			#timestamp = cleandedLine[0].split(' ')[3]
-
 
 			date = cleandedLine[0].split(' ')[3].split(':')[0].replace('[', '')
 			time = cleandedLine[0].split(' ')[3].split(':')[1]
@@ -70,7 +76,8 @@ def formatLine(lines, index):
 			MongoDB.insert_one(lineObj.__dict__)
 			index += 1
 
-		except Exception:
+		except Exception as e:
+			print 'Following error occured: {} on line {}'.format(line, e)
 			pass
 
 	global activeWorkers
@@ -82,10 +89,10 @@ lines = list()
 threads = []
 i = 0
 with open(options.log) as fileobject:
-	for index, line in enumerate(fileobject, 1):
+	for index, line in enumerate(fileobject, startIndex):
 
 		lines.append(line)
-		if index % int(float(options.linesPerThread)) == 0 or index == num_lines:
+		if index % int(float(options.linesPerThread)) == 0 or index == num_lines or index == endIndex:
 
 			while str(activeWorkers) == str(options.threads):
 				pass
@@ -97,6 +104,9 @@ with open(options.log) as fileobject:
 			t.start()
 
 			lines = list()
+
+			if index == endIndex:
+				break
 
 		progressBarObj.update(index)
 
