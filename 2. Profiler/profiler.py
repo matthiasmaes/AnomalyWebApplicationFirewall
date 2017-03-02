@@ -10,8 +10,6 @@ from optparse import OptionParser
 from record import Record
 from connection import Connection
 
-import sys
-
 
 #### Init global vars ####
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
@@ -25,12 +23,12 @@ parser = OptionParser()
 parser.add_option("-p", "--ping", action="store_true", dest="ping", default=False, help="Try to resolve originating domains to ip for geolocation")
 parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False, help="Filter search engine bots")
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-parser.add_option("-t", "--threads", action="store", dest="threads", default="8", help="Amout of threats that can be used")
+parser.add_option("-t", "--threads", action="store", dest="threads", default="16", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="access.log", help="Input via mongo")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
 
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
-parser.add_option("-e", "--end", action="store", dest="endindex", default="505", help="End index for profiling")
+parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 
 options, args = parser.parse_args()
 

@@ -77,7 +77,8 @@ def formatLine(lines, index):
 			index += 1
 
 		except Exception as e:
-			print 'Following error occured: {} on line {}'.format(line, e)
+			#print 'Following error occured: {} on line {}'.format(line, e)
+			pass
 
 	global activeWorkers
 	activeWorkers -= 1

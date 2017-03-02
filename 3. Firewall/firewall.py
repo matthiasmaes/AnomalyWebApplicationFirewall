@@ -2,6 +2,7 @@ from pymongo import MongoClient
 import IP2Location
 import calendar
 import datetime
+import time as t
 
 from optparse import OptionParser
 
@@ -10,7 +11,9 @@ from optparse import OptionParser
 ConfigMongoDB = MongoClient().Firewall.StaticConfig
 StreamMongoDB = MongoClient().Firewall.TestStream
 TmpMongoDB = MongoClient().Firewall.tmp
-ProfileMongoDB = MongoClient().Profiles['testCase']
+ProfileMongoDB = MongoClient().Profiles['DEMO']
+
+ProcessedMongoDB = MongoClient().Firewall.Processed
 
 
 weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -19,7 +22,7 @@ time = {'0' : 0, '1' : 0, '2' : 0, '3' : 0, '4' : 0, '5' : 0, '6' : 0, '7' : 0, 
 
 parser = OptionParser()
 parser.add_option("-u", "--unfamiliar", action="store", dest="unfamiliarThreshold", default="5", help="Threshold for unfamiliar locations")
-parser.add_option("-r", "--ratio", action="store", dest="ratioThreshold", default="0.15", help="Threshold for location ratio")
+parser.add_option("-r", "--ratio", action="store", dest="ratioThreshold", default="0.01", help="Threshold for location ratio")
 parser.add_option("-a", "--activity", action="store", dest="activityThreshold", default="10", help="Threshold for activity/day")
 
 options, args = parser.parse_args()
@@ -97,8 +100,11 @@ def CheckGeoLocation(packet):
 
 		ratioDiff = ProfileMongoDB.find_one({'url' : x['url']})['location'][x['Location']] - ratio
 
-		if ratioDiff > float(options.ratioThreshold):
-			print '[Alert] Ratio threshold has been exceeded ({})'.format(x['Location'])
+
+		if ratioDiff > float(options.ratioThreshold) or ratioDiff < float(options.ratioThreshold) * -1:
+			print '[Alert] Ratio threshold has been exceeded ({})'.format(ratioDiff)
+		else: 
+			print '[OK] Ratio ok {}'.format(ratioDiff)
 
 
 
@@ -124,7 +130,7 @@ def CheckActivity(packet):
 
 		#### Test for threshold ####
 		if productionConnections - profileConnections > int(options.activityThreshold):
-			print '[Alert] Activity threshold has been exceeded ({})'.format(packet['url'])
+			print '[Alert] Activity threshold has been exceeded ({})({})'.format(packet['url'], activityDay)
 
 
 
@@ -153,7 +159,26 @@ def CheckTime(packet):
 
 #### Main method ####
 if __name__ == '__main__':
-	for packet in StreamMongoDB.find():
-		CheckGeoLocation(packet)
-		CheckActivity(packet)
-		CheckTime(packet)
+
+
+	# for packet in StreamMongoDB.find():
+	# 	CheckGeoLocation(packet)
+	# 	CheckActivity(packet)
+	# 	CheckTime(packet)
+
+	while True:
+		
+		for packet in StreamMongoDB.find():
+			if ProcessedMongoDB.find({'ProcessedID' : packet['_id']}).count() == 0:
+				print 'Packet received, start processing'
+				CheckGeoLocation(packet)
+				CheckActivity(packet)
+				CheckTime(packet)
+				ProcessedMongoDB.update_one({'ProcessedID' : packet['_id']}, {'$set':{'ProcessedID' : packet['_id']}}, upsert=True)
+
+		print 'Waiting for packet...'
+
+			
+		t.sleep(5)
+
+
