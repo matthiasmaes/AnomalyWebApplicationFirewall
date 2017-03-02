@@ -106,17 +106,26 @@ def processLine(start, index):
 
 		connObj =  Connection(inputLine['ip'], inputLine['time'], connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
 
+
+		#### Init Batch ####
+		bulk = OutputMongoDB.initialize_unordered_bulk_op()
+
+
 		#### Add connection to url ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$push': {'connection': connObj.__dict__}})
+		bulk.find({"url": inputLine['url'] }).update({'$push': {'connection': connObj.__dict__}})
 		
 		#### Add activity from connection ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'activity.' + connectionDay: 1 }})
+		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'activity.' + connectionDay: 1 }})
 
 		#### Add time from connection ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'time.' + inputLine['time']: 1 }})
+		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'time.' + inputLine['time']: 1 }})
 
 		#### Add location from connection ####
-		OutputMongoDB.update({"url": inputLine['url'] }, {'$inc': { 'location.' + connObj.getLocation(): 1 }})
+		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'location.' + connObj.getLocation(): 1 }})
+
+
+		#### Execute batch ####
+		bulk.execute()
 
 		#### Update progress ####
 		converted += 1	
