@@ -11,13 +11,14 @@ parser.add_option("-t", "--threads", action="store", dest="threads", default="12
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
 parser.add_option("-p", "--procent", action="store", dest="procentToParse", default="100", help="Set how much of the logfile to parse")
 parser.add_option("-s", "--start", action="store", dest="startToParse", default="0", help="Set line number to start parsing from")
+parser.add_option("-d", "--db", action="store", dest="dbName", default="", help="Set collection to add parsed lines")
 options, args = parser.parse_args()
 ######################
 
 
 #### Init ####
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
-MongoDB = MongoClient().FormattedLogs[options.log + ' - ' + initTime]
+MongoDB = MongoClient().FormattedLogs[options.dbName if options.dbName is not "" else options.log + ' - ' + initTime]
 startTime = datetime.datetime.now()
 MongoDB.create_index("index")
 ##############
@@ -27,7 +28,6 @@ MongoDB.create_index("index")
 #### Determening lines ####
 with open(options.log) as f:
 	num_lines = sum(1 for line in f)
-print num_lines
 linesToProcess = (num_lines * int(options.procentToParse)) / 100
 
 startIndex = int(options.startToParse)
@@ -84,7 +84,6 @@ def formatLine(lines, index):
 	activeWorkers -= 1
 	
 
-
 lines = list()
 threads = []
 i = 0
@@ -110,11 +109,8 @@ with open(options.log) as fileobject:
 		progressBarObj.update(index)
 
 
-
 for thread in threads:
 	thread.join()
-
-
 
 progressBarObj.finish()
 
