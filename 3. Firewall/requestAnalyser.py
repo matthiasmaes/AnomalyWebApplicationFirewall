@@ -134,4 +134,4 @@ if __name__ == '__main__':
 			processRequest(packet)
 
 		print 'Waiting for packet...'
-		t.sleep(5)
+		t.sleep(1)
