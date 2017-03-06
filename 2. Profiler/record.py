@@ -6,17 +6,20 @@ class Record(object):
 		self.expected_method = expected_method
 		self.expected_code = expected_code
 		self.expected_size = expected_size
+		self.totalConnections = 0
 		#self.connection = []
-		self.accessGeo = {}
+		# self.accessGeo = {}
 		self.accessParam = {}
 		self.accessDay = {}
 		self.accessTime = {}
-		self.accessAgent = {}
+		# self.accessAgent = {}
 		self.requestUrl = {}
 
-		self.ratioGeo = {}
 		self.ratioExt = {}
-		self.ratioAgent = {}
+		# self.ratioAgent = {}
+
+		self.metric_geo = {}
+		self.metric_agent = {}
 		
 
 

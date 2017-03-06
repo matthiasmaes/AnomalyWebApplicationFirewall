@@ -129,13 +129,24 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessTime.' + inputLine['time']: 1 }})
 
 		#### Add location from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessGeo.' + connObj.getLocation(): 1 }})
+		# bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessGeo.' + connObj.getLocation(): 1 }})
+
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + connObj.getLocation() + '.counter': 1 }})
 
 		#### Add access agent ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + userAgent: 1}})
+		# bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + userAgent: 1}})
+
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
+
 
 		#### Add request url ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1}})
+
+		#### update total amount of connections ####
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'totalConnections': 1}})
+
+
+
 
 
 		#### Add querystring param ####
@@ -166,18 +177,20 @@ def processLine(start, index):
 
 
 		currRecord = OutputMongoDB.find_one({"url": urlWithoutQuery })
-		totalConn = sum(currRecord['accessGeo'].values())
-
-		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + connObj.getLocation(): float(currRecord['accessGeo'][connObj.getLocation()]) / float(totalConn)}})
-
-		for ratioGeo in currRecord['ratioGeo']:
-			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + ratioGeo: float(currRecord['accessGeo'][ratioGeo]) / float(totalConn)}})
 
 
 
+		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_geo.' + connObj.getLocation() + '.ratio': float(currRecord['metric_geo'][connObj.getLocation()]['counter']) / float(currRecord['totalConnections'])}})
 
-		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioAgent.' + userAgent: float(currRecord['accessAgent'][userAgent]) / float(totalConn)}})
+		for recordMetricGeo in currRecord['metric_geo']:
+			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_geo.' + recordMetricGeo + '.ratio': float(currRecord['metric_geo'][recordMetricGeo]['counter']) / float(currRecord['totalConnections'])}})
 
+
+
+		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_agent.' + userAgent + '.ratio': float(currRecord['metric_agent'][userAgent]['counter']) / float(currRecord['totalConnections'])}})
+
+		for recordMetricAgent in currRecord['metric_agent']:
+			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_agent.' + recordMetricAgent + '.ratio': float(currRecord['metric_agent'][recordMetricAgent]['counter']) / float(currRecord['totalConnections'])}})
 
 
 
