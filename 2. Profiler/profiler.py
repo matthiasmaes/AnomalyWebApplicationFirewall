@@ -76,10 +76,11 @@ def GeoLocate(ip):
 def calculateRatio(url, metric, data):
 	""" Method for calculating the ratio for a given metric """
 
-	currRecord = OutputMongoDB.find_one({"url": url })
-	OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
-	for metricEntry in currRecord[metric]:
-		OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
+	if data is not '' or data is not None:
+		currRecord = OutputMongoDB.find_one({"url": url })
+		OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
+		for metricEntry in currRecord[metric]:
+			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
 
 
@@ -87,6 +88,13 @@ def processLine(start, index):
 	""" Assign workers with workload """
 
 	for inputLine in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
+
+		#### Local variable declaration ####
+		global converted
+		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
+		splittedTime = inputLine['date'].split('/')
+		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
+
 
 		#### Ending conditions ####
 		if inputLine is None:
@@ -97,13 +105,6 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-
-
-		#### Local variable declaration ####
-		global converted
-		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
-		splittedTime = inputLine['date'].split('/')
-		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
 
 
 		#### Split querystring into params ####
@@ -145,14 +146,14 @@ def processLine(start, index):
 
 		#### Batch update all metrics ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
 
 		#### Add querystring param ####
@@ -166,6 +167,7 @@ def processLine(start, index):
 			bulk.execute()
 		except Exception as bwe:
 			print(bwe.details)
+
 
 		#### Calculate ratio for metrics ####
 		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
