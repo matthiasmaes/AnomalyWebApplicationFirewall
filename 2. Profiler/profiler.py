@@ -135,13 +135,6 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1}})
 
 
-
-
-		
-
-
-
-
 		#### Add querystring param ####
 		if len(queryString) > 0:	
 			for param in queryString:
@@ -156,12 +149,11 @@ def processLine(start, index):
 
 
 		currRecord = OutputMongoDB.find_one({"url": urlWithoutQuery })
-
-
 		totalConn = sum(currRecord['accessGeo'].values())
-
-
 		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + connObj.getLocation(): float(currRecord['accessGeo'][connObj.getLocation()]) / float(totalConn)}})
+
+		for ratioGeo in currRecord['ratioGeo']:
+			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + ratioGeo: float(currRecord['accessGeo'][ratioGeo]) / float(totalConn)}})
 
 		#### Update progress ####
 		converted += 1	
