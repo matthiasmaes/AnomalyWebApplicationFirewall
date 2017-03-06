@@ -7,15 +7,16 @@ class Record(object):
 		self.expected_code = expected_code
 		self.expected_size = expected_size
 		self.totalConnections = 0
-		self.accessParam = {}
+		
 		self.requestUrl = {}
 
-		self.ratioExt = {}
 
 		self.metric_geo = {}
 		self.metric_agent = {}
 		self.metric_time = {}
 		self.metric_day = {}
+		self.metric_ext = {}
+		self.metric_param = {}
 		
 
 

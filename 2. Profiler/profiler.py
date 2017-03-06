@@ -63,12 +63,13 @@ progressBarObj.start()
 
 
 def calculateRatio(url, metric, data):
+
 	currRecord = OutputMongoDB.find_one({"url": url })
 
 	OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
 
-	for recordMetricGeo in currRecord[metric]:
-		OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + recordMetricGeo + '.ratio': float(currRecord[metric][recordMetricGeo]['counter']) / float(currRecord['totalConnections'])}})
+	for metricEntry in currRecord[metric]:
+		OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
 
 
@@ -107,6 +108,8 @@ def processLine(start, index):
 		else:
 			urlWithoutQuery = inputLine['url']
 			queryString = ''
+		queryString = [element.replace('.', '_') for element in queryString]
+
 
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
@@ -145,30 +148,32 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
 
 		#### Add request url ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1}})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1 }})
 
 		#### update total amount of connections ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'totalConnections': 1}})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
 
 
 
 		#### Add querystring param ####
 		if len(queryString) > 0:	
 			for param in queryString:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessParam.' + param: 1}})
+				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'metric_param.' + param + '.counter': 1}})
 
 
 		#### Add ratio filetype ####
 
 
 		try:
-			bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.' + inputLine['requestUrl'].split('.')[1].split('?')[0]: 1 }})
+			filetype = inputLine['requestUrl'].split('.')[1].split('?')[0]			
 		except Exception:
 			try:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.' + inputLine['requestUrl'].split('.')[1]: 1 }})
+				filetype = inputLine['requestUrl'].split('.')[1]
 			except Exception:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.url': 1 }})
+				filetype = 'url'
 
+
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
 
 			
@@ -191,6 +196,11 @@ def processLine(start, index):
 		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
 		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
 		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
+		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
+
+		if len(queryString) > 0:	
+			for param in queryString:
+				calculateRatio(urlWithoutQuery, 'metric_param', param)
 
 
 		#### Update progress ####
