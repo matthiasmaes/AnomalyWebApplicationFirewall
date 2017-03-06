@@ -1,4 +1,3 @@
-# Public classes
 import progressbar
 import datetime
 import threading
@@ -8,7 +7,6 @@ import IP2Location
 import dns.resolver
 from pymongo import MongoClient
 from optparse import OptionParser
-
 from record import Record
 
 
@@ -38,22 +36,18 @@ options, args = parser.parse_args()
 OutputMongoDB = MongoClient().Profiles[initTime + '_Profile']
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
-
+#### Place index on url field to speed up searches through db ####
 OutputMongoDB.create_index('url', background=True)
 
-#### Determening lines ####
+#### Determening lines to process####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
-
 diffLines = int(options.endindex) - int(options.startIndex) + 1
-
-print diffLines
 
 #### Reading bot file ####
 if options.bot:
 	with open('sources/bots.txt') as f:
 		bots = f.readlines()
 	bots = [x.strip() for x in bots]
-
 
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -62,12 +56,14 @@ progressBarObj.start()
 
 
 def GeoLocate(ip):
+	""" Method for translating ip-address to geolocation (country) """
+
 	try:
 		IP2LocObj = IP2Location.IP2Location();
 		IP2LocObj.open("sources\IP2GEODB.BIN");
 		return IP2LocObj.get_all(ip).country_long;
 	except Exception:
-		if ping:
+		if options.ping:
 			try:
 				return IP2LocObj.get_all(dns.resolver.query(ip, 'A')[0]).country_long;
 			except Exception:
@@ -78,47 +74,43 @@ def GeoLocate(ip):
 
 
 def calculateRatio(url, metric, data):
+	""" Method for calculating the ratio for a given metric """
 
 	currRecord = OutputMongoDB.find_one({"url": url })
-
 	OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
-
 	for metricEntry in currRecord[metric]:
 		OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
-
-
-
 
 
 
 def processLine(start, index):
 	""" Assign workers with workload """
 
-	for record in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
+	for inputLine in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
 
-		global converted
+		#### Ending conditions ####
+		if inputLine is None:
+			continue
 
-		#### Get record based on index ####
-		inputLine = record
-
-		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
-
-		#### Break loop if index is not found ####
-		if inputLine is None: 
-			continue	
-
-		#### End if all lines were converted ####
 		if converted >= diffLines:
 			print 'break on: ' + str(converted)
 			break
 		else:
 			progressBarObj.update(converted)
 
-		#### Format time ####
+
+		#### Local variable declaration ####
+		global converted
+		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
 		splittedTime = inputLine['date'].split('/')
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
 
 
+		#### Add document on first occurance  ####
+		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
+			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery)).__dict__)
+
+		#### Split querystring into params ####
 		if '?' in inputLine['url']:
 			urlWithoutQuery = inputLine['url'].split('?')[0]
 			queryString = inputLine['url'].split('?')[1].split('&')
@@ -128,10 +120,6 @@ def processLine(start, index):
 		queryString = [element.replace('.', '_') for element in queryString]
 
 
-		#### Add document on first occurance  ####
-		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
-			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery, inputLine['code'], inputLine['size'])).__dict__)		
-
 		#### Filter accessor based on uagent ####
 		accessedBy = ''
 		if options.bot:
@@ -140,46 +128,13 @@ def processLine(start, index):
 			else:
 				accessedBy = False
 		else:
-			accessedBy = 'Bot filtering disabled use: --bot'	
+			accessedBy = 'Bot filtering disabled use: --bot'
+		userAgent = inputLine['uagent'].replace('.', '_')
 
 
-		userAgent = inputLine['uagent'].replace('.', '_')	
-
-
-		#### Init Batch ####
-		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-	
-		#### Add accessDay from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
-
-		#### Add time from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
-
-		#### Add location from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
-
-		#### Add access agent ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
-
-
-		#### Add request url ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
-
-		#### update total amount of connections ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
-
-
-
-		#### Add querystring param ####
-		if len(queryString) > 0:	
-			for param in queryString:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'metric_param.' + param + '.counter': 1}})
-
-
-		#### Add ratio filetype ####
+		#### Determine file extension ####
 		try:
-			filetype = inputLine['requestUrl'].split('.')[1].split('?')[0]			
+			filetype = inputLine['requestUrl'].split('.')[1].split('?')[0]
 		except Exception:
 			try:
 				filetype = inputLine['requestUrl'].split('.')[1]
@@ -187,8 +142,22 @@ def processLine(start, index):
 				filetype = 'url'
 
 
+		#### Batch update all metrics ####
+		bulk = OutputMongoDB.initialize_unordered_bulk_op()
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
+
+		#### Add querystring param ####
+		if len(queryString) > 0:
+			for param in queryString:
+				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'metric_param.' + param + '.counter': 1}})
 
 
 		#### Execute batch ####
@@ -197,9 +166,7 @@ def processLine(start, index):
 		except Exception as bwe:
 			print(bwe.details)
 
-
-
-
+		#### Calculate ratio for metrics ####
 		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
 		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
 		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
@@ -207,13 +174,13 @@ def processLine(start, index):
 		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
 		calculateRatio(urlWithoutQuery, 'metric_request', urlWithoutPoints)
 
-		if len(queryString) > 0:	
+		if len(queryString) > 0:
 			for param in queryString:
 				calculateRatio(urlWithoutQuery, 'metric_param', param)
 
 
 		#### Update progress ####
-		converted += 1	
+		converted += 1
 
 	global activeWorkers
 	activeWorkers -= 1
@@ -224,7 +191,7 @@ def processLine(start, index):
 		print "[DEBUG] Lines processed: {}".format(index)
 		print '[DEBUG] Lines / seconds: {}'.format(index / ((datetime.datetime.now() - startTime).total_seconds()))
 
-		
+
 #### Prepare workload and send to worker ####
 threads, progress = [], []
 startRange = int(options.startIndex)
@@ -246,7 +213,7 @@ for index in xrange(0, loops):
 	t.start()
 
 	#### Set range for next thread ####
-	startRange += intLinesPerThread	
+	startRange += intLinesPerThread
 
 #### Wait for all workers to finish ####
 for thread in threads:

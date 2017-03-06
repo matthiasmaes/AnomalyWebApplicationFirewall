@@ -1,11 +1,9 @@
 class Record(object):
 	""" Record in profile """
 
-	def __init__(self, expected_method, url, expected_code, expected_size):
+	def __init__(self, expected_method, url):
 		self.url = url
 		self.expected_method = expected_method
-		# self.expected_code = expected_code
-		# self.expected_size = expected_size
 		self.totalConnections = 0
 
 
