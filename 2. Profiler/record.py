@@ -15,6 +15,8 @@ class Record(object):
 		self.requestUrl = {}
 
 		self.ratioGeo = {}
+		self.ratioExt = {}
+		self.ratioAgent = {}
 		
 
 

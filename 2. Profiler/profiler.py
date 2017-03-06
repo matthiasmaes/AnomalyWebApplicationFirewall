@@ -107,7 +107,10 @@ def processLine(start, index):
 			else:
 				accessedBy = 'Human'
 		else:
-			accessedBy = 'Bot filtering disabled use: --bot'		
+			accessedBy = 'Bot filtering disabled use: --bot'	
+
+
+		userAgent = inputLine['uagent'].replace('.', '_')	
 
 
 
@@ -129,7 +132,7 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessGeo.' + connObj.getLocation(): 1 }})
 
 		#### Add access agent ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + inputLine['uagent'].replace('.', '_'): 1}})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + userAgent: 1}})
 
 		#### Add request url ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1}})
@@ -141,6 +144,20 @@ def processLine(start, index):
 				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessParam.' + param: 1}})
 
 
+		#### Add ratio filetype ####
+		try:
+			bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.' + inputLine['requestUrl'].split('.')[1].split('?')[0]: 1 }})
+		except Exception:
+			try:
+				bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.' + inputLine['requestUrl'].split('.')[1]: 1 }})
+			except Exception:
+				bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.url': 1 }})
+
+
+
+			
+
+
 
 		#### Execute batch ####
 		bulk.execute()
@@ -150,10 +167,20 @@ def processLine(start, index):
 
 		currRecord = OutputMongoDB.find_one({"url": urlWithoutQuery })
 		totalConn = sum(currRecord['accessGeo'].values())
+
 		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + connObj.getLocation(): float(currRecord['accessGeo'][connObj.getLocation()]) / float(totalConn)}})
 
 		for ratioGeo in currRecord['ratioGeo']:
 			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + ratioGeo: float(currRecord['accessGeo'][ratioGeo]) / float(totalConn)}})
+
+
+
+
+		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioAgent.' + userAgent: float(currRecord['accessAgent'][userAgent]) / float(totalConn)}})
+
+
+
+
 
 		#### Update progress ####
 		converted += 1	
