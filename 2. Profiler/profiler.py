@@ -4,11 +4,12 @@ import datetime
 import threading
 import calendar
 import math
+import IP2Location
+import dns.resolver
 from pymongo import MongoClient
 from optparse import OptionParser
 
 from record import Record
-from connection import Connection
 
 
 #### Init global vars ####
@@ -60,6 +61,20 @@ progressBarObj.start()
 
 
 
+def GeoLocate(ip):
+	try:
+		IP2LocObj = IP2Location.IP2Location();
+		IP2LocObj.open("sources\IP2GEODB.BIN");
+		return IP2LocObj.get_all(ip).country_long;
+	except Exception:
+		if ping:
+			try:
+				return IP2LocObj.get_all(dns.resolver.query(ip, 'A')[0]).country_long;
+			except Exception:
+				return "Geolocation failed"
+		else:
+			return "Domain translation disabled"
+
 
 
 def calculateRatio(url, metric, data):
@@ -85,6 +100,8 @@ def processLine(start, index):
 
 		#### Get record based on index ####
 		inputLine = record
+
+		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
 
 		#### Break loop if index is not found ####
 		if inputLine is None: 
@@ -129,9 +146,6 @@ def processLine(start, index):
 		userAgent = inputLine['uagent'].replace('.', '_')	
 
 
-
-		connObj =  Connection(inputLine['ip'], inputLine['time'], connectionDay, options.ping, accessedBy, inputLine['requestUrl'])
-
 		#### Init Batch ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 	
@@ -142,13 +156,13 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 
 		#### Add location from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + connObj.getLocation() + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
 
 		#### Add access agent ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
 
 		#### Add request url ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
 
 		#### update total amount of connections ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
@@ -192,12 +206,12 @@ def processLine(start, index):
 
 
 
-		calculateRatio(urlWithoutQuery, 'metric_geo', connObj.getLocation())
+		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
 		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
 		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
 		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
 		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
-		calculateRatio(urlWithoutQuery, 'metric_request', inputLine['requestUrl'].replace('.', '_'))
+		calculateRatio(urlWithoutQuery, 'metric_request', urlWithoutPoints)
 
 		if len(queryString) > 0:	
 			for param in queryString:
