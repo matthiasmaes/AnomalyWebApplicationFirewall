@@ -148,7 +148,7 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
 
 		#### Add request url ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
 
 		#### update total amount of connections ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
@@ -197,6 +197,7 @@ def processLine(start, index):
 		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
 		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
 		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
+		calculateRatio(urlWithoutQuery, 'metric_request', inputLine['requestUrl'].replace('.', '_'))
 
 		if len(queryString) > 0:	
 			for param in queryString:

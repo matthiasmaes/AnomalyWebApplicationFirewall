@@ -17,6 +17,7 @@ class Record(object):
 		self.metric_day = {}
 		self.metric_ext = {}
 		self.metric_param = {}
+		self.metric_request = {}
 		
 
 
