@@ -136,9 +136,9 @@ def processLine(start, index):
 		accessedBy = ''
 		if options.bot:
 			if next((True for bot in bots if inputLine['uagent'] in bot), False):
-				accessedBy = 'Bot'
+				accessedBy = True
 			else:
-				accessedBy = 'Human'
+				accessedBy = False
 		else:
 			accessedBy = 'Bot filtering disabled use: --bot'	
 
@@ -160,6 +160,8 @@ def processLine(start, index):
 
 		#### Add access agent ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
+
 
 		#### Add request url ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
@@ -176,8 +178,6 @@ def processLine(start, index):
 
 
 		#### Add ratio filetype ####
-
-
 		try:
 			filetype = inputLine['requestUrl'].split('.')[1].split('?')[0]			
 		except Exception:
@@ -190,18 +190,12 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
 
-			
-
-
 
 		#### Execute batch ####
 		try:
 			bulk.execute()
 		except Exception as bwe:
 			print(bwe.details)
-
-
-
 
 
 
@@ -258,16 +252,11 @@ for index in xrange(0, loops):
 for thread in threads:
 	thread.join()
 
-#### Finishing - Cleaning ####
-for x in OutputMongoDB.find():
-
-	if len(x['connection']) == 0:
-		OutputMongoDB.delete_one({'_id': x['_id']})
-		continue
-
-	
-
 progressBarObj.finish()
+
+
+
+
 
 #### Print statistics ####
 print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))
