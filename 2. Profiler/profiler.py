@@ -106,10 +106,6 @@ def processLine(start, index):
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
 
 
-		#### Add document on first occurance  ####
-		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
-			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery)).__dict__)
-
 		#### Split querystring into params ####
 		if '?' in inputLine['url']:
 			urlWithoutQuery = inputLine['url'].split('?')[0]
@@ -140,6 +136,11 @@ def processLine(start, index):
 				filetype = inputLine['requestUrl'].split('.')[1]
 			except Exception:
 				filetype = 'url'
+
+
+		#### Add document on first occurance  ####
+		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
+			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery)).__dict__)
 
 
 		#### Batch update all metrics ####
