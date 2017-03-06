@@ -38,6 +38,8 @@ OutputMongoDB = MongoClient().Profiles[initTime + '_Profile']
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 
+OutputMongoDB.create_index('url', background=True)
+
 #### Determening lines ####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 
@@ -83,11 +85,19 @@ def processLine(start, index):
 
 		#### Format time ####
 		splittedTime = inputLine['date'].split('/')
-		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]		
+		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
+
+
+		if '?' in inputLine['url']:
+			urlWithoutQuery = inputLine['url'].split('?')[0]
+			queryString = inputLine['url'].split('?')[1].split('&')
+		else:
+			urlWithoutQuery = inputLine['url']
+			queryString = ''
 
 		#### Add document on first occurance  ####
-		if OutputMongoDB.find({'url': inputLine['url']}).count() == 0:
-			OutputMongoDB.insert_one((Record(inputLine['method'], inputLine['url'], inputLine['code'], inputLine['size'])).__dict__)		
+		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
+			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery, inputLine['code'], inputLine['size'])).__dict__)		
 
 		#### Filter accessor based on uagent ####
 		accessedBy = ''
@@ -107,16 +117,29 @@ def processLine(start, index):
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
 		#### Add connection to url ####
-		bulk.find({"url": inputLine['url'] }).update({'$push': {'connection': connObj.__dict__}})
+		# bulk.find({"url": urlWithoutQuery }).update({'$push': {'connection': connObj.__dict__}})
 		
-		#### Add activity from connection ####
-		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'activity.' + connectionDay: 1 }})
+		#### Add accessDay from connection ####
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessDay.' + connectionDay: 1 }})
 
 		#### Add time from connection ####
-		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'time.' + inputLine['time']: 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessTime.' + inputLine['time']: 1 }})
 
 		#### Add location from connection ####
-		bulk.find({"url": inputLine['url'] }).update({'$inc': { 'location.' + connObj.getLocation(): 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'location.' + connObj.getLocation(): 1 }})
+
+		#### Add access agent ####
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + inputLine['uagent'].replace('.', '_'): 1}})
+
+		#### Add request url ####
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestURL.' + inputLine['requestUrl'].replace('.', '_'): 1}})
+
+		#### Add querystring param ####
+		if len(queryString) > 0:	
+			for param in queryString:
+				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'param.' + param: 1}})
+
+
 
 		#### Execute batch ####
 		bulk.execute()

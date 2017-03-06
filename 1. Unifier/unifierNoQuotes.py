@@ -20,7 +20,7 @@ options, args = parser.parse_args()
 initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
 MongoDB = MongoClient().FormattedLogs[options.dbName if options.dbName is not "" else options.log + ' - ' + initTime]
 startTime = datetime.datetime.now()
-MongoDB.create_index("index")
+MongoDB.create_index('index', background=True)
 ##############
 
 
@@ -76,7 +76,7 @@ def formatLine(lines, index):
 			MongoDB.insert_one(lineObj.__dict__)
 			index += 1
 
-		except Exception as e:
+		except Exception:
 			#print 'Following error occured: {} on line {}'.format(line, e)
 			pass
 
