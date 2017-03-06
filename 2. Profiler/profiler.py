@@ -126,18 +126,26 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessTime.' + inputLine['time']: 1 }})
 
 		#### Add location from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'location.' + connObj.getLocation(): 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessGeo.' + connObj.getLocation(): 1 }})
 
 		#### Add access agent ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + inputLine['uagent'].replace('.', '_'): 1}})
 
 		#### Add request url ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestURL.' + inputLine['requestUrl'].replace('.', '_'): 1}})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1}})
+
+
+
+
+		
+
+
+
 
 		#### Add querystring param ####
 		if len(queryString) > 0:	
 			for param in queryString:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'param.' + param: 1}})
+				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessParam.' + param: 1}})
 
 
 
@@ -145,6 +153,15 @@ def processLine(start, index):
 		bulk.execute()
 
 
+
+
+		currRecord = OutputMongoDB.find_one({"url": urlWithoutQuery })
+
+
+		totalConn = sum(currRecord['accessGeo'].values())
+
+
+		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'ratioGeo.' + connObj.getLocation(): float(currRecord['accessGeo'][connObj.getLocation()]) / float(totalConn)}})
 
 		#### Update progress ####
 		converted += 1	
@@ -193,8 +210,7 @@ for x in OutputMongoDB.find():
 		OutputMongoDB.delete_one({'_id': x['_id']})
 		continue
 
-	for location in x['location']:
-		OutputMongoDB.update({"url": x['url']} , {'$set': { 'location.' + location: (float(x['location'][location]) / float(len(x['connection']))) }})
+	
 
 progressBarObj.finish()
 

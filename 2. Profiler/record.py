@@ -6,13 +6,16 @@ class Record(object):
 		self.expected_method = expected_method
 		self.expected_code = expected_code
 		self.expected_size = expected_size
-		self.connection = []
-		self.location = {}
-		self.param = {}
+		#self.connection = []
+		self.accessGeo = {}
+		self.accessParam = {}
 		self.accessDay = {}
 		self.accessTime = {}
 		self.accessAgent = {}
-		self.requestURL = {}
+		self.requestUrl = {}
+
+		self.ratioGeo = {}
+		
 
 
 	def __eq__(self, other):
