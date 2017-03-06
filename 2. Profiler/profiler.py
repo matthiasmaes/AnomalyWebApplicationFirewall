@@ -59,13 +59,26 @@ progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.
 progressBarObj.start()
 
 
+
+
+
+def calculateRatio(url, metric, data):
+	currRecord = OutputMongoDB.find_one({"url": url })
+
+	OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
+
+	for recordMetricGeo in currRecord[metric]:
+		OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + recordMetricGeo + '.ratio': float(currRecord[metric][recordMetricGeo]['counter']) / float(currRecord['totalConnections'])}})
+
+
+
+
+
+
 def processLine(start, index):
 	""" Assign workers with workload """
 
-	s = start
-	e = start + int(options.linesPerThread)
-
-	for record in InputMongoDB.find()[s:e]:
+	for record in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
 
 		global converted
 
@@ -118,34 +131,24 @@ def processLine(start, index):
 
 		#### Init Batch ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-
-		#### Add connection to url ####
-		# bulk.find({"url": urlWithoutQuery }).update({'$push': {'connection': connObj.__dict__}})
-		
+	
 		#### Add accessDay from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessDay.' + connectionDay: 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
 
 		#### Add time from connection ####
-		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessTime.' + inputLine['time']: 1 }})
+		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 
 		#### Add location from connection ####
-		# bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'accessGeo.' + connObj.getLocation(): 1 }})
-
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + connObj.getLocation() + '.counter': 1 }})
 
 		#### Add access agent ####
-		# bulk.find({"url": urlWithoutQuery }).update({'$inc': {'accessAgent.' + userAgent: 1}})
-
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
-
 
 		#### Add request url ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'requestUrl.' + inputLine['requestUrl'].replace('.', '_'): 1}})
 
 		#### update total amount of connections ####
 		bulk.find({"url": urlWithoutQuery }).update({'$inc': {'totalConnections': 1}})
-
-
 
 
 
@@ -156,6 +159,8 @@ def processLine(start, index):
 
 
 		#### Add ratio filetype ####
+
+
 		try:
 			bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'ratioExt.' + inputLine['requestUrl'].split('.')[1].split('?')[0]: 1 }})
 		except Exception:
@@ -171,28 +176,21 @@ def processLine(start, index):
 
 
 		#### Execute batch ####
-		bulk.execute()
+		try:
+			bulk.execute()
+		except Exception as bwe:
+			print(bwe.details)
 
 
 
 
-		currRecord = OutputMongoDB.find_one({"url": urlWithoutQuery })
 
 
 
-		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_geo.' + connObj.getLocation() + '.ratio': float(currRecord['metric_geo'][connObj.getLocation()]['counter']) / float(currRecord['totalConnections'])}})
-
-		for recordMetricGeo in currRecord['metric_geo']:
-			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_geo.' + recordMetricGeo + '.ratio': float(currRecord['metric_geo'][recordMetricGeo]['counter']) / float(currRecord['totalConnections'])}})
-
-
-
-		OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_agent.' + userAgent + '.ratio': float(currRecord['metric_agent'][userAgent]['counter']) / float(currRecord['totalConnections'])}})
-
-		for recordMetricAgent in currRecord['metric_agent']:
-			OutputMongoDB.update({'url': urlWithoutQuery}, {'$set': {'metric_agent.' + recordMetricAgent + '.ratio': float(currRecord['metric_agent'][recordMetricAgent]['counter']) / float(currRecord['totalConnections'])}})
-
-
+		calculateRatio(urlWithoutQuery, 'metric_geo', connObj.getLocation())
+		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
+		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
+		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
 
 
 		#### Update progress ####
