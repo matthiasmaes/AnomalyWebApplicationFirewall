@@ -1,5 +1,5 @@
 from pymongo import MongoClient
-import json, random, string
+import random, string
 
 StreamMongoDB = MongoClient().Firewall.TestStream
 InputMongoDB = MongoClient().FormattedLogs.DEMO

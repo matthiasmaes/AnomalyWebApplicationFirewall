@@ -140,8 +140,10 @@ def processRequest(request):
 
 
 	#### Delete packet from stream ####
-	StreamMongoDB.delete_one({'_id': packet['_id']})
-
+	try:
+		StreamMongoDB.delete_one({'_id': packet['_id']})
+	except Exception as e:
+		console.log('Delete failed')
 
 def startAnomalyDetection(packet):
 	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
