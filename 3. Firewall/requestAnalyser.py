@@ -168,13 +168,13 @@ def anomaly_TimeCounter(profileRecord, requestRecord):
 
 
 def anomaly_AgentCounter(profileRecord, requestRecord):
-	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
-	print '[ALERT] Total conncections from user agent has been exceeded ({} - {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections from user agent safe ({} - {}h)'.format(diffExtCounter, tmpLastObj.ext)
+	diffAgentCounter = int(requestRecord['metric_agent'][tmpLastObj.agent]['counter']) - int(profileRecord['metric_agent'][tmpLastObj.agent]['counter'])
+	print '[ALERT] Total conncections from user agent has been exceeded ({} - {})'.format(diffAgentCounter, tmpLastObj.agent) if requestRecord['metric_agent'][tmpLastObj.agent]['counter'] > profileRecord['metric_agent'][tmpLastObj.agent]['counter'] else '[OK] Connections from user agent safe ({} - {}h)'.format(diffAgentCounter, tmpLastObj.agent)
 
 
 def anomaly_ExtCounter(profileRecord, requestRecord):
 	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
-	print '[ALERT] Total requests for filetype has been exceeded ({} - {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections from user agent safe ({} - {}h)'.format(diffExtCounter, tmpLastObj.ext)
+	print '[ALERT] Total requests for filetype has been exceeded ({} - {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections from user agent safe ({} - {})'.format(diffExtCounter, tmpLastObj.ext)
 
 
 
