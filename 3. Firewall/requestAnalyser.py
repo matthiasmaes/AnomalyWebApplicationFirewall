@@ -182,6 +182,7 @@ def anomaly_TimeUnknown(profileRecord, requestRecord):
 def anomaly_AgentUnknown(profileRecord, requestRecord):
 	if tmpLastObj.agent in profileRecord['metric_agent']:
 		anomaly_AgentCounter(profileRecord, requestRecord)
+		anomaly_AgentRatio(profileRecord, requestRecord)
 	else:
 		print '[ALERT] Connection with unfamiliar user agent ({})'.format(tmpLastObj.agent)
 
@@ -245,14 +246,19 @@ def anomaly_ParamCounter (profileRecord, requestRecord):
 ################
 #### RATIOS ####
 ################
-
+diffRatio = 0.1
 def anomaly_GeoRatio(profileRecord, requestRecord):
 	diffGeoRatio = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
-	print '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoRatio, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['ratio'] != profileRecord['metric_geo'][tmpLastObj.location]['ratio'] else '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoRatio, tmpLastObj.location)
+	print '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoRatio, tmpLastObj.location) if -diffRatio <= diffGeoRatio <= diffRatio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoRatio, tmpLastObj.location)
 
 def anomaly_TimeRatio(profileRecord, requestRecord):
 	diffTimeRatio = float(requestRecord['metric_time'][tmpLastObj.time]['ratio']) - float(profileRecord['metric_time'][tmpLastObj.time]['ratio'])
-	print '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diffTimeRatio, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['ratio'] != profileRecord['metric_time'][tmpLastObj.time]['ratio'] else '[OK] Ratio time safe ({} | {}h)'.format(diffGeoRatio, tmpLastObj.time)
+	print '[OK] Ratio time safe ({} | {}h)'.format(diffTimeRatio, tmpLastObj.time) if -diffRatio <= diffTimeRatio <= diffRatio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diffTimeRatio, tmpLastObj.time)
+
+def anomaly_AgentRatio(profileRecord, requestRecord):
+	diffAgentRatio = float(requestRecord['metric_agent'][tmpLastObj.agent]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj.agent]['ratio'])
+	print '[OK] Ratio user agent safe ({} | {}h)'.format(diffAgentRatio, tmpLastObj.agent) if -diffRatio <= diffAgentRatio <= diffRatio else '[ALERT] Ratio user agent has been exceeded ({} | {}h)'.format(diffAgentRatio, tmpLastObj.agent)
+
 
 
 ##############
