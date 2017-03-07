@@ -4,6 +4,8 @@ class LastAdded(object):
 	def __init__(self):
 		self.location = ''
 		self.time = ''
+		self.agent = ''
+		self.ext = ''
 
 	def __get__(self, obj, objtype):
 		return self.val

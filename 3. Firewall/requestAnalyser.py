@@ -133,6 +133,8 @@ def processRequest(request):
 	#### Create last added object ####
 	tmpLastObj.location = location
 	tmpLastObj.time = request['time']
+	tmpLastObj.agent = userAgent
+	tmpLastObj.ext = filetype
 
 
 	#### Delete packet from stream ####
@@ -146,6 +148,8 @@ def startAnomalyDetection(packet):
 	anomaly_TotalConnections(profileRecord, requestRecord)
 	anomaly_GeoCounter(profileRecord, requestRecord)
 	anomaly_TimeCounter(profileRecord, requestRecord)
+	anomaly_AgentCounter(profileRecord, requestRecord)
+	anomaly_ExtCounter(profileRecord, requestRecord)
 
 
 def anomaly_TotalConnections(profileRecord, requestRecord):
@@ -161,6 +165,17 @@ def anomaly_GeoCounter(profileRecord, requestRecord):
 def anomaly_TimeCounter(profileRecord, requestRecord):
 	diffTimeCounter = int(requestRecord['metric_time'][tmpLastObj.time]['counter']) - int(profileRecord['metric_time'][tmpLastObj.time]['counter'])
 	print '[ALERT] Total conncections at time has been exceeded ({} - {}h)'.format(diffTimeCounter, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['counter'] > profileRecord['metric_time'][tmpLastObj.time]['counter'] else '[OK] Connections at time safe ({} - {}h)'.format(diffTimeCounter, tmpLastObj.time)
+
+
+def anomaly_AgentCounter(profileRecord, requestRecord):
+	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
+	print '[ALERT] Total conncections from user agent has been exceeded ({} - {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections from user agent safe ({} - {}h)'.format(diffExtCounter, tmpLastObj.ext)
+
+
+def anomaly_ExtCounter(profileRecord, requestRecord):
+	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
+	print '[ALERT] Total requests for filetype has been exceeded ({} - {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections from user agent safe ({} - {}h)'.format(diffExtCounter, tmpLastObj.ext)
+
 
 
 
