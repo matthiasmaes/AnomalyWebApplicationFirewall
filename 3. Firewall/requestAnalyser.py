@@ -130,14 +130,19 @@ def startAnomalyDetection(packet):
 	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
 	requestRecord = ProcessedMongo.find_one({'url': packet['url']})
 
-	anomaly_TotalConnections(profileRecord, requestRecord)
+	anomaly_TotalConnections(packet, profileRecord, requestRecord)
+	anomaly_GeoCounter(packet, profileRecord, requestRecord)
 
 
-def anomaly_TotalConnections(profileRecord, requestRecord):
+def anomaly_TotalConnections(packet, profileRecord, requestRecord):
 	diffRequests = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
 	print '[ALERT] Total conncections has been exceeded ({})'.format(diffRequests) if requestRecord['totalConnections'] > profileRecord['totalConnections'] else '[OK] Total connections safe ({})'.format(diffRequests)
 
 
+def anomaly_GeoCounter(packet, profileRecord, requestRecord):
+	location = GeoLocate(packet['ip'])
+	diffGeoCounter = int(requestRecord['metric_geo'][location]['counter']) - int(profileRecord['metric_geo'][location]['counter'])
+	print '[ALERT] Total conncections from location has been exceeded ({} - {})'.format(diffGeoCounter, location) if requestRecord['metric_geo'][location]['counter'] > profileRecord['metric_geo'][location]['counter'] else '[OK] Connections from location safe ({} - {})'.format(diffGeoCounter, location)
 
 
 
