@@ -175,6 +175,7 @@ def anomaly_GeoUnknown(profileRecord, requestRecord):
 def anomaly_TimeUnknown(profileRecord, requestRecord):
 	if tmpLastObj.time in profileRecord['metric_time']:
 		anomaly_TimeCounter(profileRecord, requestRecord)
+		anomaly_TimeRatio(profileRecord, requestRecord)
 	else:
 		print '[ALERT] Connection at unfamiliar time ({})'.format(tmpLastObj.time)
 
@@ -246,9 +247,12 @@ def anomaly_ParamCounter (profileRecord, requestRecord):
 ################
 
 def anomaly_GeoRatio(profileRecord, requestRecord):
-	diffGeoCounter = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
-	print '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoCounter, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['ratio'] != profileRecord['metric_geo'][tmpLastObj.location]['ratio'] else '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoCounter, tmpLastObj.location)
+	diffGeoRatio = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
+	print '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoRatio, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['ratio'] != profileRecord['metric_geo'][tmpLastObj.location]['ratio'] else '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoRatio, tmpLastObj.location)
 
+def anomaly_TimeRatio(profileRecord, requestRecord):
+	diffTimeRatio = float(requestRecord['metric_time'][tmpLastObj.time]['ratio']) - float(profileRecord['metric_time'][tmpLastObj.time]['ratio'])
+	print '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diffTimeRatio, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['ratio'] != profileRecord['metric_time'][tmpLastObj.time]['ratio'] else '[OK] Ratio time safe ({} | {}h)'.format(diffGeoRatio, tmpLastObj.time)
 
 
 ##############
@@ -265,4 +269,3 @@ if __name__ == '__main__':
 			startAnomalyDetection(packet)
 
 			print '-----------------'
-		t.sleep(1)
