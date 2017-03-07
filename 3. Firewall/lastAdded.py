@@ -6,6 +6,7 @@ class LastAdded(object):
 		self.time = ''
 		self.agent = ''
 		self.ext = ''
+		self.request = ''
 
 		self.param = list()
 

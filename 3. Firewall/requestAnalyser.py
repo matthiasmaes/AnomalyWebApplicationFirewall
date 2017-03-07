@@ -136,6 +136,7 @@ def processRequest(request):
 	tmpLastObj.time = request['time']
 	tmpLastObj.agent = userAgent
 	tmpLastObj.ext = filetype
+	tmpLastObj.request = urlWithoutPoints
 
 
 	#### Delete packet from stream ####
@@ -151,6 +152,7 @@ def startAnomalyDetection(packet):
 	anomaly_TimeCounter(profileRecord, requestRecord)
 	anomaly_AgentCounter(profileRecord, requestRecord)
 	anomaly_ExtCounter(profileRecord, requestRecord)
+	anomaly_RequestCounter(profileRecord, requestRecord)
 	anomaly_ParamCounter(profileRecord, requestRecord)
 
 
@@ -161,28 +163,33 @@ def anomaly_TotalConnections(profileRecord, requestRecord):
 
 def anomaly_GeoCounter(profileRecord, requestRecord):
 	diffGeoCounter = int(requestRecord['metric_geo'][tmpLastObj.location]['counter']) - int(profileRecord['metric_geo'][tmpLastObj.location]['counter'])
-	print '[ALERT] Total connections from location has been exceeded ({} - {})'.format(diffGeoCounter, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['counter'] > profileRecord['metric_geo'][tmpLastObj.location]['counter'] else '[OK] Connections from location safe ({} - {})'.format(diffGeoCounter, tmpLastObj.location)
+	print '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diffGeoCounter, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['counter'] > profileRecord['metric_geo'][tmpLastObj.location]['counter'] else '[OK] Connections from location safe ({} | {})'.format(diffGeoCounter, tmpLastObj.location)
 
 
 def anomaly_TimeCounter(profileRecord, requestRecord):
 	diffTimeCounter = int(requestRecord['metric_time'][tmpLastObj.time]['counter']) - int(profileRecord['metric_time'][tmpLastObj.time]['counter'])
-	print '[ALERT] Total connections at time has been exceeded ({} - {}h)'.format(diffTimeCounter, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['counter'] > profileRecord['metric_time'][tmpLastObj.time]['counter'] else '[OK] Connections at time safe ({} - {}h)'.format(diffTimeCounter, tmpLastObj.time)
+	print '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diffTimeCounter, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['counter'] > profileRecord['metric_time'][tmpLastObj.time]['counter'] else '[OK] Connections at time safe ({} | {}h)'.format(diffTimeCounter, tmpLastObj.time)
 
 
 def anomaly_AgentCounter(profileRecord, requestRecord):
 	diffAgentCounter = int(requestRecord['metric_agent'][tmpLastObj.agent]['counter']) - int(profileRecord['metric_agent'][tmpLastObj.agent]['counter'])
-	print '[ALERT] Total connections from user agent has been exceeded ({} - {})'.format(diffAgentCounter, tmpLastObj.agent) if requestRecord['metric_agent'][tmpLastObj.agent]['counter'] > profileRecord['metric_agent'][tmpLastObj.agent]['counter'] else '[OK] Connections from user agent safe ({} - {}h)'.format(diffAgentCounter, tmpLastObj.agent)
+	print '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diffAgentCounter, tmpLastObj.agent) if requestRecord['metric_agent'][tmpLastObj.agent]['counter'] > profileRecord['metric_agent'][tmpLastObj.agent]['counter'] else '[OK] Connections from user agent safe ({} | {}h)'.format(diffAgentCounter, tmpLastObj.agent)
 
 
 def anomaly_ExtCounter(profileRecord, requestRecord):
 	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
-	print '[ALERT] Total requests for filetype has been exceeded ({} - {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections for filetype safe ({} - {})'.format(diffExtCounter, tmpLastObj.ext)
+	print '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections for filetype safe ({} | {})'.format(diffExtCounter, tmpLastObj.ext)
+
+
+def anomaly_RequestCounter(profileRecord, requestRecord):
+	diffRequestCounter = int(requestRecord['metric_request'][tmpLastObj.request]['counter']) - int(profileRecord['metric_request'][tmpLastObj.request]['counter'])
+	print '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diffRequestCounter, tmpLastObj.request) if requestRecord['metric_request'][tmpLastObj.request]['counter'] > profileRecord['metric_request'][tmpLastObj.request]['counter'] else '[OK] Requests for resource safe ({} | {})'.format(diffRequestCounter, tmpLastObj.request)
 
 
 def anomaly_ParamCounter(profileRecord, requestRecord):
 	for param in tmpLastObj.param:
 		diffParamCounter = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		print '[ALERT] Total requests with parameter has been exceeded ({} - {})'.format(diffParamCounter, param) if requestRecord['metric_param'][param]['counter'] > profileRecord['metric_param'][param]['counter'] else '[OK] Connections with parameter safe ({} - {})'.format(diffParamCounter, param)
+		print '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diffParamCounter, param) if requestRecord['metric_param'][param]['counter'] > profileRecord['metric_param'][param]['counter'] else '[OK] Connections with parameter safe ({} | {})'.format(diffParamCounter, param)
 
 
 
