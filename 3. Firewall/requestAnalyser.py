@@ -7,6 +7,7 @@ from record import Record
 
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
+ProfileMongoDB = MongoClient().Profiles.PROFILE
 
 
 weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -125,6 +126,19 @@ def processRequest(request):
 	StreamMongoDB.delete_one({'_id': packet['_id']})
 
 
+def startAnomalyDetection(packet):
+	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
+	requestRecord = ProcessedMongo.find_one({'url': packet['url']})
+
+	anomaly_TotalConnections(profileRecord, requestRecord)
+
+
+def anomaly_TotalConnections(profileRecord, requestRecord):
+	diffRequests = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
+	print '[ALERT] Total conncections has been exceeded ({})'.format(diffRequests) if requestRecord['totalConnections'] > profileRecord['totalConnections'] else '[OK] Total connections safe ({})'.format(diffRequests)
+
+
+
 
 
 if __name__ == '__main__':
@@ -132,6 +146,7 @@ if __name__ == '__main__':
 		for packet in StreamMongoDB.find():
 			print 'Started processing'
 			processRequest(packet)
+			startAnomalyDetection(packet)
 
 		print 'Waiting for packet...'
 		t.sleep(1)
