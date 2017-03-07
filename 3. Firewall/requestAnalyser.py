@@ -19,12 +19,11 @@ bots = [x.strip() for x in bots]
 
 
 tmpLastObj = LastAdded()
-
+diffRatio = 0.1
 
 
 def GeoLocate(ip):
 	""" Method for translating ip-address to geolocation (country) """
-
 	try:
 		IP2LocObj = IP2Location.IP2Location();
 		IP2LocObj.open('../2. Profiler/sources\IP2GEODB.BIN');
@@ -37,7 +36,6 @@ def GeoLocate(ip):
 
 def calculateRatio(url, metric, data):
 	""" Method for calculating the ratio for a given metric """
-
 	currRecord = ProcessedMongo.find_one({"url": url })
 	ProcessedMongo.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
 	for metricEntry in currRecord[metric]:
@@ -145,6 +143,14 @@ def processRequest(request):
 	except Exception as e:
 		print 'Delete failed'
 
+
+
+
+
+###########################
+#### ANOMALY DETECTION ####
+###########################
+
 def startAnomalyDetection(packet):
 	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
 	requestRecord = ProcessedMongo.find_one({'url': packet['url']})
@@ -155,9 +161,7 @@ def startAnomalyDetection(packet):
 	anomaly_AgentUnknown(profileRecord, requestRecord)
 	anomaly_ExtUnknown(profileRecord, requestRecord)
 	anomaly_RequestUnknown(profileRecord, requestRecord)
-	anomaly_RequestUnknown(profileRecord, requestRecord)
-
-
+	anomaly_ParamUnknown(profileRecord, requestRecord)
 
 
 
@@ -189,16 +193,18 @@ def anomaly_AgentUnknown(profileRecord, requestRecord):
 def anomaly_ExtUnknown(profileRecord, requestRecord):
 	if tmpLastObj.ext in profileRecord['metric_ext']:
 		anomaly_ExtCounter(profileRecord, requestRecord)
+		anomaly_ExtRatio(profileRecord, requestRecord)
 	else:
 		print '[ALERT] Request for unusual file type ({})'.format(tmpLastObj.ext)
 
 def anomaly_RequestUnknown(profileRecord, requestRecord):
 	if tmpLastObj.request in profileRecord['metric_request']:
 		anomaly_RequestCounter(profileRecord, requestRecord)
+		anomaly_RequestRatio(profileRecord, requestRecord)
 	else:
 		print '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj.request)
 
-def anomaly_RequestUnknown(profileRecord, requestRecord):
+def anomaly_ParamUnknown(profileRecord, requestRecord):
 	for param in tmpLastObj.param:
 		if param in profileRecord['metric_param']:
 			anomaly_ParamCounter(profileRecord, requestRecord)
@@ -246,7 +252,7 @@ def anomaly_ParamCounter (profileRecord, requestRecord):
 ################
 #### RATIOS ####
 ################
-diffRatio = 0.1
+
 def anomaly_GeoRatio(profileRecord, requestRecord):
 	diffGeoRatio = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
 	print '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoRatio, tmpLastObj.location) if -diffRatio <= diffGeoRatio <= diffRatio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoRatio, tmpLastObj.location)
@@ -257,8 +263,15 @@ def anomaly_TimeRatio(profileRecord, requestRecord):
 
 def anomaly_AgentRatio(profileRecord, requestRecord):
 	diffAgentRatio = float(requestRecord['metric_agent'][tmpLastObj.agent]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj.agent]['ratio'])
-	print '[OK] Ratio user agent safe ({} | {}h)'.format(diffAgentRatio, tmpLastObj.agent) if -diffRatio <= diffAgentRatio <= diffRatio else '[ALERT] Ratio user agent has been exceeded ({} | {}h)'.format(diffAgentRatio, tmpLastObj.agent)
+	print '[OK] Ratio user agent safe ({} | {})'.format(diffAgentRatio, tmpLastObj.agent) if -diffRatio <= diffAgentRatio <= diffRatio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diffAgentRatio, tmpLastObj.agent)
 
+def anomaly_ExtRatio(profileRecord, requestRecord):
+	diffExtRatio = float(requestRecord['metric_ext'][tmpLastObj.ext]['ratio']) - float(profileRecord['metric_ext'][tmpLastObj.ext]['ratio'])
+	print '[OK] Ratio file extension safe ({} | {})'.format(diffExtRatio, tmpLastObj.ext) if -diffRatio <= diffExtRatio <= diffRatio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diffExtRatio, tmpLastObj.ext)
+
+def anomaly_RequestRatio(profileRecord, requestRecord):
+	diffRequestRatio = float(requestRecord['metric_request'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_request'][tmpLastObj.request]['ratio'])
+	print '[OK] Ratio resource requests safe ({} | {})'.format(diffRequestRatio, tmpLastObj.request) if -diffRatio <= diffRequestRatio <= diffRatio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diffRequestRatio, tmpLastObj.request)
 
 
 ##############
