@@ -7,6 +7,11 @@ class LastAdded(object):
 		self.agent = ''
 		self.ext = ''
 
+		self.param = list()
+
+	def addParam(self, param):
+		self.param.append(param)
+
 	def __get__(self, obj, objtype):
 		return self.val
 

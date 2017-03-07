@@ -14,7 +14,7 @@ while True:
 
 	counter = 1
 	for packet in setPackets:
-		print '[{}] REQUEST INFO: url: {}, time: {}, date: {}, method {}'.format(counter, packet['url'], packet['time'], packet['date'], packet['method'])
+		print '[{}] REQUEST INFO: url: {}, time: {}, date: {}'.format(counter, packet['url'], packet['time'], packet['date'])
 		counter += 1
 
 	print ''
