@@ -143,59 +143,120 @@ def processRequest(request):
 	try:
 		StreamMongoDB.delete_one({'_id': packet['_id']})
 	except Exception as e:
-		console.log('Delete failed')
+		print 'Delete failed'
 
 def startAnomalyDetection(packet):
 	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
 	requestRecord = ProcessedMongo.find_one({'url': packet['url']})
 
 	anomaly_TotalConnections(profileRecord, requestRecord)
-	anomaly_GeoCounter(profileRecord, requestRecord)
-	anomaly_TimeCounter(profileRecord, requestRecord)
-	anomaly_AgentCounter(profileRecord, requestRecord)
-	anomaly_ExtCounter(profileRecord, requestRecord)
-	anomaly_RequestCounter(profileRecord, requestRecord)
-	anomaly_ParamCounter(profileRecord, requestRecord)
+	anomaly_GeoUnknown(profileRecord, requestRecord)
+	anomaly_TimeUnknown(profileRecord, requestRecord)
+	anomaly_AgentUnknown(profileRecord, requestRecord)
+	anomaly_ExtUnknown(profileRecord, requestRecord)
+	anomaly_RequestUnknown(profileRecord, requestRecord)
+	anomaly_RequestUnknown(profileRecord, requestRecord)
 
 
-def anomaly_TotalConnections(profileRecord, requestRecord):
+
+
+
+#################
+#### UNKNOWS ####
+#################
+
+def anomaly_GeoUnknown(profileRecord, requestRecord):
+	if tmpLastObj.location in profileRecord['metric_geo']:
+		anomaly_GeoCounter(profileRecord, requestRecord)
+		anomaly_GeoRatio(profileRecord, requestRecord)
+	else:
+		print '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj.location)
+
+def anomaly_TimeUnknown(profileRecord, requestRecord):
+	if tmpLastObj.time in profileRecord['metric_time']:
+		anomaly_TimeCounter(profileRecord, requestRecord)
+	else:
+		print '[ALERT] Connection at unfamiliar time ({})'.format(tmpLastObj.time)
+
+def anomaly_AgentUnknown(profileRecord, requestRecord):
+	if tmpLastObj.agent in profileRecord['metric_agent']:
+		anomaly_AgentCounter(profileRecord, requestRecord)
+	else:
+		print '[ALERT] Connection with unfamiliar user agent ({})'.format(tmpLastObj.agent)
+
+def anomaly_ExtUnknown(profileRecord, requestRecord):
+	if tmpLastObj.ext in profileRecord['metric_ext']:
+		anomaly_ExtCounter(profileRecord, requestRecord)
+	else:
+		print '[ALERT] Request for unusual file type ({})'.format(tmpLastObj.ext)
+
+def anomaly_RequestUnknown(profileRecord, requestRecord):
+	if tmpLastObj.request in profileRecord['metric_request']:
+		anomaly_RequestCounter(profileRecord, requestRecord)
+	else:
+		print '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj.request)
+
+def anomaly_RequestUnknown(profileRecord, requestRecord):
+	for param in tmpLastObj.param:
+		if param in profileRecord['metric_param']:
+			anomaly_ParamCounter(profileRecord, requestRecord)
+		else:
+			print '[ALERT] Unfamiliar resource requested ({})'.format(param)
+
+
+
+
+##################
+#### COUNTERS ####
+##################
+
+def anomaly_TotalConnections (profileRecord, requestRecord):
 	diffRequests = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
 	print '[ALERT] Total conncections has been exceeded ({})'.format(diffRequests) if requestRecord['totalConnections'] > profileRecord['totalConnections'] else '[OK] Total connections safe ({})'.format(diffRequests)
 
-
-def anomaly_GeoCounter(profileRecord, requestRecord):
+def anomaly_GeoCounter (profileRecord, requestRecord):
 	diffGeoCounter = int(requestRecord['metric_geo'][tmpLastObj.location]['counter']) - int(profileRecord['metric_geo'][tmpLastObj.location]['counter'])
 	print '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diffGeoCounter, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['counter'] > profileRecord['metric_geo'][tmpLastObj.location]['counter'] else '[OK] Connections from location safe ({} | {})'.format(diffGeoCounter, tmpLastObj.location)
 
-
-def anomaly_TimeCounter(profileRecord, requestRecord):
+def anomaly_TimeCounter (profileRecord, requestRecord):
 	diffTimeCounter = int(requestRecord['metric_time'][tmpLastObj.time]['counter']) - int(profileRecord['metric_time'][tmpLastObj.time]['counter'])
 	print '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diffTimeCounter, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['counter'] > profileRecord['metric_time'][tmpLastObj.time]['counter'] else '[OK] Connections at time safe ({} | {}h)'.format(diffTimeCounter, tmpLastObj.time)
 
-
-def anomaly_AgentCounter(profileRecord, requestRecord):
+def anomaly_AgentCounter (profileRecord, requestRecord):
 	diffAgentCounter = int(requestRecord['metric_agent'][tmpLastObj.agent]['counter']) - int(profileRecord['metric_agent'][tmpLastObj.agent]['counter'])
 	print '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diffAgentCounter, tmpLastObj.agent) if requestRecord['metric_agent'][tmpLastObj.agent]['counter'] > profileRecord['metric_agent'][tmpLastObj.agent]['counter'] else '[OK] Connections from user agent safe ({} | {}h)'.format(diffAgentCounter, tmpLastObj.agent)
 
-
-def anomaly_ExtCounter(profileRecord, requestRecord):
+def anomaly_ExtCounter (profileRecord, requestRecord):
 	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
 	print '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diffExtCounter, tmpLastObj.ext) if requestRecord['metric_ext'][tmpLastObj.ext]['counter'] > profileRecord['metric_ext'][tmpLastObj.ext]['counter'] else '[OK] Connections for filetype safe ({} | {})'.format(diffExtCounter, tmpLastObj.ext)
 
-
-def anomaly_RequestCounter(profileRecord, requestRecord):
+def anomaly_RequestCounter (profileRecord, requestRecord):
 	diffRequestCounter = int(requestRecord['metric_request'][tmpLastObj.request]['counter']) - int(profileRecord['metric_request'][tmpLastObj.request]['counter'])
 	print '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diffRequestCounter, tmpLastObj.request) if requestRecord['metric_request'][tmpLastObj.request]['counter'] > profileRecord['metric_request'][tmpLastObj.request]['counter'] else '[OK] Requests for resource safe ({} | {})'.format(diffRequestCounter, tmpLastObj.request)
 
-
-def anomaly_ParamCounter(profileRecord, requestRecord):
+def anomaly_ParamCounter (profileRecord, requestRecord):
 	for param in tmpLastObj.param:
 		diffParamCounter = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
 		print '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diffParamCounter, param) if requestRecord['metric_param'][param]['counter'] > profileRecord['metric_param'][param]['counter'] else '[OK] Connections with parameter safe ({} | {})'.format(diffParamCounter, param)
 
 
 
+################
+#### RATIOS ####
+################
+
+def anomaly_GeoRatio(profileRecord, requestRecord):
+	diffGeoCounter = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
+	print '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoCounter, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['ratio'] != profileRecord['metric_geo'][tmpLastObj.location]['ratio'] else '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoCounter, tmpLastObj.location)
+
+
+
+##############
+#### MAIN ####
+##############
+
 if __name__ == '__main__':
+	print 'Waiting for packet...'
 	while True:
 		for packet in StreamMongoDB.find():
 			print 'Started processing'
@@ -203,5 +264,5 @@ if __name__ == '__main__':
 			processRequest(packet)
 			startAnomalyDetection(packet)
 
-		print 'Waiting for packet...'
+			print '-----------------'
 		t.sleep(1)
