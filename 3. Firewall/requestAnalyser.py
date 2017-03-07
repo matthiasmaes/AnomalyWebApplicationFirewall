@@ -4,6 +4,7 @@ import IP2Location
 import time as t
 from pymongo import MongoClient
 from record import Record
+from lastAdded import LastAdded
 
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
@@ -16,6 +17,8 @@ with open('../2. Profiler/sources/bots.txt') as f:
 	bots = f.readlines()
 bots = [x.strip() for x in bots]
 
+
+tmpLastObj = LastAdded()
 
 
 
@@ -72,6 +75,8 @@ def processRequest(request):
 	userAgent = request['uagent'].replace('.', '_')
 
 
+	location = GeoLocate(request['ip'])
+
 	#### Determine file extension ####
 	try:
 		filetype = request['requestUrl'].split('.')[1].split('?')[0]
@@ -92,7 +97,7 @@ def processRequest(request):
 	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
 	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
 	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + request['time'] + '.counter': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + GeoLocate(request['ip']) + '.counter': 1 }})
+	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + location + '.counter': 1 }})
 	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
 	bulk.find({"url": urlWithoutQuery }).update({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
 	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
@@ -111,8 +116,9 @@ def processRequest(request):
 	except Exception as bwe:
 		print(bwe.details)
 
+
 	#### Calculate ratio for metrics ####
-	calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(request['ip']))
+	calculateRatio(urlWithoutQuery, 'metric_geo', location)
 	calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
 	calculateRatio(urlWithoutQuery, 'metric_time', request['time'])
 	calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
@@ -123,6 +129,13 @@ def processRequest(request):
 		for param in queryString:
 			calculateRatio(urlWithoutQuery, 'metric_param', param)
 
+
+	#### Create last added object ####
+	tmpLastObj.location = location
+	tmpLastObj.time = request['time']
+
+
+	#### Delete packet from stream ####
 	StreamMongoDB.delete_one({'_id': packet['_id']})
 
 
@@ -130,19 +143,24 @@ def startAnomalyDetection(packet):
 	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
 	requestRecord = ProcessedMongo.find_one({'url': packet['url']})
 
-	anomaly_TotalConnections(packet, profileRecord, requestRecord)
-	anomaly_GeoCounter(packet, profileRecord, requestRecord)
+	anomaly_TotalConnections(profileRecord, requestRecord)
+	anomaly_GeoCounter(profileRecord, requestRecord)
+	anomaly_TimeCounter(profileRecord, requestRecord)
 
 
-def anomaly_TotalConnections(packet, profileRecord, requestRecord):
+def anomaly_TotalConnections(profileRecord, requestRecord):
 	diffRequests = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
 	print '[ALERT] Total conncections has been exceeded ({})'.format(diffRequests) if requestRecord['totalConnections'] > profileRecord['totalConnections'] else '[OK] Total connections safe ({})'.format(diffRequests)
 
 
-def anomaly_GeoCounter(packet, profileRecord, requestRecord):
-	location = GeoLocate(packet['ip'])
-	diffGeoCounter = int(requestRecord['metric_geo'][location]['counter']) - int(profileRecord['metric_geo'][location]['counter'])
-	print '[ALERT] Total conncections from location has been exceeded ({} - {})'.format(diffGeoCounter, location) if requestRecord['metric_geo'][location]['counter'] > profileRecord['metric_geo'][location]['counter'] else '[OK] Connections from location safe ({} - {})'.format(diffGeoCounter, location)
+def anomaly_GeoCounter(profileRecord, requestRecord):
+	diffGeoCounter = int(requestRecord['metric_geo'][tmpLastObj.location]['counter']) - int(profileRecord['metric_geo'][tmpLastObj.location]['counter'])
+	print '[ALERT] Total conncections from location has been exceeded ({} - {})'.format(diffGeoCounter, tmpLastObj.location) if requestRecord['metric_geo'][tmpLastObj.location]['counter'] > profileRecord['metric_geo'][tmpLastObj.location]['counter'] else '[OK] Connections from location safe ({} - {})'.format(diffGeoCounter, tmpLastObj.location)
+
+
+def anomaly_TimeCounter(profileRecord, requestRecord):
+	diffTimeCounter = int(requestRecord['metric_time'][tmpLastObj.time]['counter']) - int(profileRecord['metric_time'][tmpLastObj.time]['counter'])
+	print '[ALERT] Total conncections at time has been exceeded ({} - {}h)'.format(diffTimeCounter, tmpLastObj.time) if requestRecord['metric_time'][tmpLastObj.time]['counter'] > profileRecord['metric_time'][tmpLastObj.time]['counter'] else '[OK] Connections at time safe ({} - {}h)'.format(diffTimeCounter, tmpLastObj.time)
 
 
 
