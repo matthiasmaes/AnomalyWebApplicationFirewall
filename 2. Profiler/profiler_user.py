@@ -7,7 +7,7 @@ import IP2Location
 import dns.resolver
 from pymongo import MongoClient
 from optparse import OptionParser
-from record import Record
+from record_user import Record_User
 
 
 #### Init global vars ####
@@ -22,8 +22,8 @@ parser = OptionParser()
 parser.add_option("-p", "--ping", action="store_true", dest="ping", default=False, help="Try to resolve originating domains to ip for geolocation")
 parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False, help="Filter search engine bots")
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-parser.add_option("-t", "--threads", action="store", dest="threads", default="16", help="Amout of threats that can be used")
-parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
+parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
+parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
 parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
 
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
@@ -34,6 +34,8 @@ options, args = parser.parse_args()
 
 #### Init DB ####
 OutputMongoDB = MongoClient().ProfileApp[initTime + '_profile_app']
+OutputMongoDB = MongoClient().ProfileUser[initTime + '_profile_user']
+
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 #### Place index on url field to speed up searches through db ####
@@ -54,7 +56,6 @@ progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.
 progressBarObj.start()
 
 
-
 def GeoLocate(ip):
 	""" Method for translating ip-address to geolocation (country) """
 
@@ -70,17 +71,6 @@ def GeoLocate(ip):
 				return "Geolocation failed"
 		else:
 			return "Domain translation disabled"
-
-
-
-def calculateRatio(url, metric, data):
-	""" Method for calculating the ratio for a given metric """
-
-	if data is not '' or data is not None:
-		currRecord = OutputMongoDB.find_one({"url": url })
-		OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
-		for metricEntry in currRecord[metric]:
-			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
 
 
@@ -107,6 +97,8 @@ def processLine(start, index):
 			progressBarObj.update(converted)
 
 
+
+
 		#### Split querystring into params ####
 		if '?' in inputLine['url']:
 			urlWithoutQuery = inputLine['url'].split('?')[0]
@@ -114,72 +106,26 @@ def processLine(start, index):
 		else:
 			urlWithoutQuery = inputLine['url']
 			queryString = ''
+
+		urlWithoutQuery = urlWithoutQuery.replace('.', '_')
 		queryString = [element.replace('.', '_') for element in queryString]
 
 
-		#### Filter accessor based on uagent ####
-		accessedBy = ''
-		if options.bot:
-			if next((True for bot in bots if inputLine['uagent'] in bot), False):
-				accessedBy = True
-			else:
-				accessedBy = False
-		else:
-			accessedBy = 'Bot filtering disabled use: --bot'
-		userAgent = inputLine['uagent'].replace('.', '_')
-
-
-		#### Determine file extension ####
-		try:
-			filetype = inputLine['requestUrl'].split('.')[1].split('?')[0]
-		except Exception:
-			try:
-				filetype = inputLine['requestUrl'].split('.')[1]
-			except Exception:
-				filetype = 'url'
 
 
 		#### Add document on first occurance  ####
-		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
-			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery)).__dict__)
+		if OutputMongoDB.find({'ip': inputLine['ip']}).count() == 0:
+			OutputMongoDB.insert_one(Record_User(inputLine['ip'], GeoLocate(inputLine['ip'])).__dict__)
 
 
-		#### Batch update all metrics ####
+
+
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
+		bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'request_url.' + urlWithoutQuery : 1 }})
+
+		bulk.execute()
 
 
-		#### Add querystring param ####
-		if len(queryString) > 0:
-			for param in queryString:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'metric_param.' + param + '.counter': 1}})
-
-
-		#### Execute batch ####
-		try:
-			bulk.execute()
-		except Exception as bwe:
-			print(bwe.details)
-
-
-		#### Calculate ratio for metrics ####
-		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
-		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
-		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
-		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
-		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
-		calculateRatio(urlWithoutQuery, 'metric_request', urlWithoutPoints)
-
-		if len(queryString) > 0:
-			for param in queryString:
-				calculateRatio(urlWithoutQuery, 'metric_param', param)
 
 
 		#### Update progress ####
