@@ -14,8 +14,6 @@ from record_user import Record_User
 initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
-weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
 
 #### Init options ####
 parser = OptionParser()
@@ -80,7 +78,8 @@ def processLine(start, index):
 		#### Local variable declaration ####
 		global converted
 		splittedTime = inputLine['date'].split('/')
-		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
+
+		connectionDay = datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]), 0, 0, 0).strftime("%A")
 
 
 		#### Ending conditions ####
@@ -117,13 +116,8 @@ def processLine(start, index):
 
 
 		#### Insert record if it doesn't exists ####
-
-
 		if OutputMongoDB.find({'ip': inputLine['ip']}).count() == 0:
 			OutputMongoDB.insert_one(Record_User(inputLine['ip'], GeoLocate(inputLine['ip'])).__dict__)
-
-
-
 
 
 

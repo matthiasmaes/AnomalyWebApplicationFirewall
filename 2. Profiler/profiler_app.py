@@ -139,6 +139,7 @@ def processLine(start, index):
 				filetype = 'url'
 
 
+
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
 			OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
@@ -159,14 +160,24 @@ def processLine(start, index):
 		#### Add querystring param ####
 		if len(queryString) > 0:
 			for param in queryString:
-				bulk.find({"url": urlWithoutQuery }).update({'$inc': {'metric_param.' + param + '.counter': 1}})
+				bulk.find({"url": urlWithoutQuery }).update_one({'$inc': {'metric_param.' + param.split('=')[0] + '.' + param.split('=')[1] + '.counter': 1}})
+
+				#### Determine type of param ####
+				try:
+					int(param.split('=')[1])
+					paramType = 'int'
+				except ValueError as ve:
+					paramType = 'bool' if param.split('=')[1] == 'true' or param.split('=')[1] == 'false' else 'string'
+
+				bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + param.split('=')[0] + '.type': paramType}})
+
 
 
 		#### Execute batch ####
 		try:
 			bulk.execute()
 		except Exception as bwe:
-			print(bwe.details)
+			pass
 
 
 		#### Calculate ratio for metrics ####
@@ -179,7 +190,9 @@ def processLine(start, index):
 
 		if len(queryString) > 0:
 			for param in queryString:
-				calculateRatio(urlWithoutQuery, 'metric_param', param)
+				pass
+				# calculateRatio(urlWithoutQuery, 'metric_param', param)
+
 
 
 		#### Update progress ####
