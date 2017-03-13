@@ -8,6 +8,12 @@ class Record_User(object):
 		self.request_url = {}
 		self.request_resource = {}
 
+		self.metric_agent = {}
+		self.metric_time = {}
+		self.metric_day = {}
+
+
+
 
 	def __eq__(self, other):
 		""" Test if records are equal """

@@ -105,7 +105,9 @@ def processLine(start, index):
 			urlWithoutQuery = inputLine['url']
 			queryString = ''
 
+		userAgent = inputLine['uagent'].replace('.', '_')
 		urlWithoutQuery = urlWithoutQuery.replace('.', '_')
+
 		queryString = [element.replace('.', '_') for element in queryString]
 
 
@@ -119,8 +121,12 @@ def processLine(start, index):
 
 
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-		bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'request_url.' + urlWithoutQuery : 1 }})
-		bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'request_resource.' + requestUrl_Replaced : 1 }})
+
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'request_url.' + urlWithoutQuery : 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'request_resource.' + requestUrl_Replaced : 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 
 		bulk.execute()
 
