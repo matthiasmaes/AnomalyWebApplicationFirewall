@@ -130,8 +130,8 @@ def processLine(start, index):
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'totalConnections': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'request_url.' + urlWithoutQuery : 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'request_resource.' + requestUrl_Replaced : 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery : 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced : 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})

@@ -6,12 +6,13 @@ class Record_User(object):
 		self.location = location
 		self.totalConnections = 0
 
-		self.request_url = {}
-		self.request_resource = {}
 
 		self.metric_agent = {}
 		self.metric_time = {}
 		self.metric_day = {}
+
+		self.metric_url = {}
+		self.metric_request = {}
 
 
 
