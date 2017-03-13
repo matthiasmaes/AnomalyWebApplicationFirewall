@@ -81,7 +81,7 @@ def processLine(start, index):
 
 		#### Local variable declaration ####
 		global converted
-		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
+		requestUrl_Replaced = inputLine['requestUrl'].replace('.', '_')
 		splittedTime = inputLine['date'].split('/')
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
 
@@ -122,6 +122,7 @@ def processLine(start, index):
 
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 		bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'request_url.' + urlWithoutQuery : 1 }})
+		bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'request_resource.' + requestUrl_Replaced : 1 }})
 
 		bulk.execute()
 
