@@ -160,16 +160,23 @@ def processLine(start, index):
 		#### Add querystring param ####
 		if len(queryString) > 0:
 			for param in queryString:
-				bulk.find({"url": urlWithoutQuery }).update_one({'$inc': {'metric_param.' + param.split('=')[0] + '.' + param.split('=')[1] + '.counter': 1}})
+				if len(param.split('=')) == 2:
 
-				#### Determine type of param ####
-				try:
-					int(param.split('=')[1])
-					paramType = 'int'
-				except ValueError as ve:
-					paramType = 'bool' if param.split('=')[1] == 'true' or param.split('=')[1] == 'false' else 'string'
 
-				bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + param.split('=')[0] + '.type': paramType}})
+					#### Determine type of param ####
+					try:
+						int(param.split('=')[1])
+						paramType = 'int'
+					except ValueError as ve:
+						paramType = 'bool' if param.split('=')[1] == 'true' or param.split('=')[1] == 'false' else 'string'
+
+					except Exception as e:
+						print param
+
+					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + param.split('=')[0] + '.length': len(param.split('=')[1])}})
+					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + param.split('=')[0] + '.type': paramType}})
+					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': {'metric_param.' + param.split('=')[0] + '.' + param.split('=')[1] + '.counter': 1}})
+
 
 
 
