@@ -1,4 +1,4 @@
-class Record(object):
+class Record_App(object):
 	""" Record in profile """
 
 	def __init__(self, expected_method, url):

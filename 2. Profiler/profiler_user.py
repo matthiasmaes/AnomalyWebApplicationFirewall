@@ -11,7 +11,7 @@ from record_user import Record_User
 
 
 #### Init global vars ####
-initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
+initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
 weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -33,9 +33,7 @@ options, args = parser.parse_args()
 
 
 #### Init DB ####
-OutputMongoDB = MongoClient().ProfileApp[initTime + '_profile_app']
-OutputMongoDB = MongoClient().ProfileUser[initTime + '_profile_user']
-
+OutputMongoDB = MongoClient().profile_user['profile_user_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 #### Place index on url field to speed up searches through db ####

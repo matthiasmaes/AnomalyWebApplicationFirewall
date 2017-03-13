@@ -3,7 +3,7 @@ import dns.resolver
 
 class Connection(object):
 	""" Object that represents a connection, one log entry """
-	
+
 	def __init__(self, ip, time, connectionDay, ping, typeConn, orgURL):
 		try:
 			IP2LocObj = IP2Location.IP2Location();

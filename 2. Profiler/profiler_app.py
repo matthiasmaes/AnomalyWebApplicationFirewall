@@ -7,11 +7,11 @@ import IP2Location
 import dns.resolver
 from pymongo import MongoClient
 from optparse import OptionParser
-from record import Record
+from record_app import Record_App
 
 
 #### Init global vars ####
-initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
+initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
 weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -33,7 +33,7 @@ options, args = parser.parse_args()
 
 
 #### Init DB ####
-OutputMongoDB = MongoClient().ProfileApp[initTime + '_profile_app']
+OutputMongoDB = MongoClient().profile_app['profile_app_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 
 #### Place index on url field to speed up searches through db ####
@@ -141,7 +141,7 @@ def processLine(start, index):
 
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
-			OutputMongoDB.insert_one((Record(inputLine['method'], urlWithoutQuery)).__dict__)
+			OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
 
 
 		#### Batch update all metrics ####
