@@ -4,6 +4,7 @@ class Record_User(object):
 	def __init__(self, ip, location):
 		self.ip = ip
 		self.location = location
+		self.totalConnections = 0
 
 		self.request_url = {}
 		self.request_resource = {}

@@ -79,7 +79,6 @@ def processLine(start, index):
 
 		#### Local variable declaration ####
 		global converted
-		requestUrl_Replaced = inputLine['requestUrl'].replace('.', '_')
 		splittedTime = inputLine['date'].split('/')
 		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
 
@@ -105,23 +104,32 @@ def processLine(start, index):
 			urlWithoutQuery = inputLine['url']
 			queryString = ''
 
+
+		#### Replace points in url to prevent confict in mongoDB datastructure ####
+
 		userAgent = inputLine['uagent'].replace('.', '_')
 		urlWithoutQuery = urlWithoutQuery.replace('.', '_')
-
+		requestUrl_Replaced = inputLine['requestUrl'].replace('.', '_')
 		queryString = [element.replace('.', '_') for element in queryString]
 
 
 
 
-		#### Add document on first occurance  ####
+
+		#### Insert record if it doesn't exists ####
+
+
 		if OutputMongoDB.find({'ip': inputLine['ip']}).count() == 0:
 			OutputMongoDB.insert_one(Record_User(inputLine['ip'], GeoLocate(inputLine['ip'])).__dict__)
 
 
 
 
+
+
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'totalConnections': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'request_url.' + urlWithoutQuery : 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'request_resource.' + requestUrl_Replaced : 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
