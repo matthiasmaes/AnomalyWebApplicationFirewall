@@ -1,4 +1,4 @@
-import progressbar
+import progressbar, string
 import datetime
 import threading
 import calendar
@@ -160,24 +160,30 @@ def processLine(start, index):
 		#### Add querystring param ####
 		if len(queryString) > 0:
 			for param in queryString:
-				if len(param.split('=')) == 2:
 
+				if len(param.split('=')) == 2:
+					pKey = param.split('=')[0]
+					pValue = param.split('=')[1]
 
 					#### Determine type of param ####
 					try:
-						int(param.split('=')[1])
+						int(pValue)
 						paramType = 'int'
 					except ValueError as ve:
-						paramType = 'bool' if param.split('=')[1] == 'true' or param.split('=')[1] == 'false' else 'string'
-
+						paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
 					except Exception as e:
 						print param
 
-					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + param.split('=')[0] + '.length': len(param.split('=')[1])}})
-					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + param.split('=')[0] + '.type': paramType}})
-					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': {'metric_param.' + param.split('=')[0] + '.' + param.split('=')[1] + '.counter': 1}})
+
+					#### Detecting special chars in param ####
+					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
 
 
+					#### Add to bulk updates ####
+					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 
 
 		#### Execute batch ####
