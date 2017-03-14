@@ -23,11 +23,10 @@ parser.add_option("-d", "--debug", action="store_true", dest="debug", default=Fa
 parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
 parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
-
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 
-options, args = parser.parse_args()
+options = parser.parse_args()
 
 
 #### Init DB ####
@@ -121,6 +120,7 @@ def processLine(start, index):
 
 
 
+		#### Setup bulk stream ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'totalConnections': 1 }})
@@ -176,8 +176,6 @@ for thread in threads:
 	thread.join()
 
 progressBarObj.finish()
-
-
 
 
 
