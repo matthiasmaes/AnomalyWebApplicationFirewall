@@ -189,10 +189,6 @@ def processLine(start, index):
 			pass
 
 
-
-
-
-
 		#### Calculate ratio for metrics ####
 		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
 		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent_Replaced)
@@ -207,19 +203,16 @@ def processLine(start, index):
 
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
+
 					calculateRatioParam(urlWithoutQuery, pKey, pValue)
 
-
-
-					orgAvg = OutputMongoDB.find_one({"url": urlWithoutQuery})['metric_param'][pKey]
-
 					try:
+						orgAvg = OutputMongoDB.find_one({"url": urlWithoutQuery})['metric_param'][pKey]
 						newAvg = orgAvg['length'] + ((len(pValue) - orgAvg['length']) / orgAvg['counter'])
 					except KeyError:
 						newAvg = len(pValue)
-
-					OutputMongoDB.update_one({"url": urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
-
+					finally:
+						OutputMongoDB.update_one({"url": urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
 
 
 		#### Update progress ####
@@ -240,7 +233,7 @@ threads, progress = [], []
 startRange = int(options.startIndex)
 endRange = int(options.linesPerThread)
 intLinesPerThread = int(options.linesPerThread)
-loops = int(math.ceil(float(diffLines)/float(intLinesPerThread)))
+loops = int(math.ceil(float(diffLines) / float(intLinesPerThread)))
 
 
 for index in xrange(0, loops):
