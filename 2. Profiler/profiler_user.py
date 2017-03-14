@@ -26,12 +26,13 @@ parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="D
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 
-options = parser.parse_args()
+options, args = parser.parse_args()
 
 
 #### Init DB ####
 OutputMongoDB = MongoClient().profile_user['profile_user_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
+BotMongoDB = MongoClient().config_static.profile_bots
 
 #### Place index on url field to speed up searches through db ####
 OutputMongoDB.create_index('url', background=True)
@@ -39,12 +40,6 @@ OutputMongoDB.create_index('url', background=True)
 #### Determening lines to process####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 diffLines = int(options.endindex) - int(options.startIndex) + 1
-
-#### Reading bot file ####
-if options.bot:
-	with open('sources/bots.txt') as f:
-		bots = f.readlines()
-	bots = [x.strip() for x in bots]
 
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -105,7 +100,7 @@ def processLine(start, index):
 
 		#### Replace points in url to prevent confict in mongoDB datastructure ####
 
-		userAgent = inputLine['uagent'].replace('.', '_')
+		userAgent_Replaced = inputLine['uagent'].replace('.', '_')
 		urlWithoutQuery = urlWithoutQuery.replace('.', '_')
 		requestUrl_Replaced = inputLine['requestUrl'].replace('.', '_')
 		queryString = [element.replace('.', '_') for element in queryString]
@@ -126,11 +121,16 @@ def processLine(start, index):
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'totalConnections': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery : 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced : 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 
-		bulk.execute()
+
+		try:
+			bulk.execute()
+		except Exception as e:
+			print e.details
 
 
 
