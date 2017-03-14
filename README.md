@@ -5,9 +5,7 @@
 Development of an anomaly based web application firewall
 
 
-`14/03 COPIED TO BITBUCKET`
-
-## Options 
+## Options
 
 | Option | Short | Description | Profiler | Unifier | Firewall
 |:-------------|:-------------|:-----|:------|:------|:------|
@@ -58,7 +56,3 @@ This script is used to run the web application firewall (simulated) based on the
 
 ### Example
 `firewall -u 15 -r 10 -a 15`
-
-
-
-
