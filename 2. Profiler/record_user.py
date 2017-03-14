@@ -10,6 +10,7 @@ class Record_User(object):
 		self.metric_agent = {}
 		self.metric_time = {}
 		self.metric_day = {}
+		self.metric_param = {}
 
 		self.metric_url = {}
 		self.metric_request = {}

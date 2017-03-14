@@ -1,4 +1,5 @@
 import progressbar
+import string
 import datetime
 import threading
 import calendar
@@ -25,7 +26,6 @@ parser.add_option("-x", "--lines", action="store", dest="linesPerThread", defaul
 parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
-
 options, args = parser.parse_args()
 
 
@@ -99,10 +99,9 @@ def processLine(start, index):
 
 
 		#### Replace points in url to prevent confict in mongoDB datastructure ####
-
 		userAgent_Replaced = inputLine['uagent'].replace('.', '_')
-		urlWithoutQuery = urlWithoutQuery.replace('.', '_')
 		requestUrl_Replaced = inputLine['requestUrl'].replace('.', '_')
+		urlWithoutQuery = urlWithoutQuery.replace('.', '_')
 		queryString = [element.replace('.', '_') for element in queryString]
 
 
@@ -127,12 +126,38 @@ def processLine(start, index):
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 
 
+		#### Add querystring param ####
+		if len(queryString) > 0:
+			for param in queryString:
+				if len(param.split('=')) == 2:
+					pKey = param.split('=')[0]
+					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
+
+					#### Determine type of param ####
+					try:
+						int(pValue)
+						paramType = 'int'
+					except ValueError as ve:
+						paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
+					except Exception as e:
+						print param
+
+
+					#### Detecting special chars in param ####
+					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
+
+
+					#### Add to bulk updates ####
+					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+
+
 		try:
 			bulk.execute()
 		except Exception as e:
 			print e.details
-
-
 
 
 		#### Update progress ####

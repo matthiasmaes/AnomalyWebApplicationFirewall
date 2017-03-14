@@ -14,7 +14,6 @@ from record_app import Record_App
 initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
-weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 
 #### Init options ####
@@ -22,17 +21,18 @@ parser = OptionParser()
 parser.add_option("-p", "--ping", action="store_true", dest="ping", default=False, help="Try to resolve originating domains to ip for geolocation")
 parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False, help="Filter search engine bots")
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-parser.add_option("-t", "--threads", action="store", dest="threads", default="16", help="Amout of threats that can be used")
-parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
+parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
+parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
 parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
-options = parser.parse_args()
+options, args = parser.parse_args()
 
 
 #### Init DB ####
 OutputMongoDB = MongoClient().profile_app['profile_app_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
+BotMongoDB = MongoClient().config_static.profile_bots
 
 #### Place index on url field to speed up searches through db ####
 OutputMongoDB.create_index('url', background=True)
@@ -40,12 +40,6 @@ OutputMongoDB.create_index('url', background=True)
 #### Determening lines to process####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 diffLines = int(options.endindex) - int(options.startIndex) + 1
-
-#### Reading bot file ####
-if options.bot:
-	with open('sources/bots.txt') as f:
-		bots = f.readlines()
-	bots = [x.strip() for x in bots]
 
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -90,8 +84,9 @@ def processLine(start, index):
 		#### Local variable declaration ####
 		global converted
 		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
+
 		splittedTime = inputLine['date'].split('/')
-		connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
+		connectionDay = datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]), 0, 0, 0).strftime("%A")
 
 
 		#### Ending conditions ####
@@ -116,15 +111,7 @@ def processLine(start, index):
 
 
 		#### Filter accessor based on uagent ####
-		accessedBy = ''
-		if options.bot:
-			if next((True for bot in bots if inputLine['uagent'] in bot), False):
-				accessedBy = True
-			else:
-				accessedBy = False
-		else:
-			accessedBy = 'Bot filtering disabled use: --bot'
-		userAgent = inputLine['uagent'].replace('.', '_')
+		userAgent_Replaced = inputLine['uagent'].replace('.', '_')
 
 
 		#### Determine file extension ####
@@ -149,8 +136,8 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
@@ -161,7 +148,7 @@ def processLine(start, index):
 
 				if len(param.split('=')) == 2:
 					pKey = param.split('=')[0]
-					pValue = param.split('=')[1]
+					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
 
 					#### Determine type of param ####
 					try:
@@ -193,7 +180,7 @@ def processLine(start, index):
 
 		#### Calculate ratio for metrics ####
 		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
-		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
+		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent_Replaced)
 		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
 		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
 		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
@@ -247,8 +234,6 @@ for thread in threads:
 	thread.join()
 
 progressBarObj.finish()
-
-
 
 
 
