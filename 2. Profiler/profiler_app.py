@@ -75,10 +75,7 @@ def calculateRatio(url, metric, data):
 			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
 def calculateRatioParam(url, pKey, pValue):
-	# bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
-
 	""" Method for calculating the ratio for a given metric """
-
 
 	currRecord = OutputMongoDB.find_one({"url": url })
 	OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + pValue + '.ratio': float(currRecord['metric_param'][pKey][pValue]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
@@ -86,7 +83,6 @@ def calculateRatioParam(url, pKey, pValue):
 	for param in currRecord['metric_param'][pKey]:
 		try:
 			OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
-
 		except Exception as e:
 			pass
 
@@ -147,13 +143,13 @@ def processLine(start, index):
 
 
 		#### Batch update all metrics ####
-		bulk = OutputMongoDB.initialize_unordered_bulk_op()
+		bulk = OutputMongoDB.initialize_ordered_bulk_op()
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
@@ -182,7 +178,6 @@ def processLine(start, index):
 
 					#### Add to bulk updates ####
 					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
 					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
 					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
@@ -192,6 +187,10 @@ def processLine(start, index):
 			bulk.execute()
 		except Exception as bwe:
 			pass
+
+
+
+
 
 
 		#### Calculate ratio for metrics ####
@@ -205,7 +204,21 @@ def processLine(start, index):
 		if len(queryString) > 0:
 			for param in queryString:
 				if len(param.split('=')) == 2:
-					calculateRatioParam(urlWithoutQuery, param.split('=')[0], '-' if not param.split('=')[1] else param.split('=')[1])
+
+					pKey = param.split('=')[0]
+					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
+					calculateRatioParam(urlWithoutQuery, pKey, pValue)
+
+
+
+					orgAvg = OutputMongoDB.find_one({"url": urlWithoutQuery})['metric_param'][pKey]
+
+					try:
+						newAvg = orgAvg['length'] + ((len(pValue) - orgAvg['length']) / orgAvg['counter'])
+					except KeyError:
+						newAvg = len(pValue)
+
+					OutputMongoDB.update_one({"url": urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
 
 
 
