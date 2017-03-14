@@ -136,9 +136,9 @@ def processLine(start, index):
 					try:
 						int(pValue)
 						paramType = 'int'
-					except ValueError as ve:
+					except ValueError:
 						paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
-					except Exception as e:
+					except Exception:
 						print param
 
 					#### Detecting special chars in param ####

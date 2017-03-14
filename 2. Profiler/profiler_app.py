@@ -83,7 +83,7 @@ def calculateRatioParam(url, pKey, pValue):
 	for param in currRecord['metric_param'][pKey]:
 		try:
 			OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
-		except Exception as e:
+		except Exception:
 			pass
 
 
@@ -166,9 +166,9 @@ def processLine(start, index):
 					try:
 						int(pValue)
 						paramType = 'int'
-					except ValueError as ve:
+					except ValueError:
 						paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
-					except Exception as e:
+					except Exception:
 						print param
 
 
@@ -185,7 +185,7 @@ def processLine(start, index):
 		#### Execute batch ####
 		try:
 			bulk.execute()
-		except Exception as bwe:
+		except Exception:
 			pass
 
 
