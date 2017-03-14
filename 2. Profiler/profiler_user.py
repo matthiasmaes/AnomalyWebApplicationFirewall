@@ -72,7 +72,6 @@ def processLine(start, index):
 		#### Local variable declaration ####
 		global converted
 		splittedTime = inputLine['date'].split('/')
-
 		connectionDay = datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]), 0, 0, 0).strftime("%A")
 
 
@@ -142,17 +141,14 @@ def processLine(start, index):
 					except Exception as e:
 						print param
 
-
 					#### Detecting special chars in param ####
 					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
-
 
 					#### Add to bulk updates ####
 					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
 					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
 					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
 					bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
-
 
 		try:
 			bulk.execute()
@@ -201,8 +197,6 @@ for thread in threads:
 	thread.join()
 
 progressBarObj.finish()
-
-
 
 #### Print statistics ####
 print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))
