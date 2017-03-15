@@ -5,6 +5,7 @@ class Record_User(object):
 		self.ip = ip
 		self.location = location
 		self.totalConnections = 0
+		self.timeline = {}
 
 		#### Init all metrics ####
 		self.metric_agent = {}
@@ -13,6 +14,8 @@ class Record_User(object):
 		self.metric_param = {}
 		self.metric_url = {}
 		self.metric_request = {}
+
+		self.metric_timespent = {}
 
 	def __eq__(self, other):
 		""" Test if records are equal """

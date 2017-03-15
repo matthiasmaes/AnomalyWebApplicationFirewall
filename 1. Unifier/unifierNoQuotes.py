@@ -5,7 +5,7 @@ from formattedLine import FormattedLine
 
 #### Init options ####
 parser = OptionParser()
-parser.add_option("-l", "--log", action="store", dest="log", default="log.txt", help="Input log file for profiler")
+parser.add_option("-l", "--log", action="store", dest="log", default="access.log", help="Input log file for profiler")
 parser.add_option("-f", "--format", action="store", dest="format", default="combined", help="Format of the input log")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="12", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
@@ -17,7 +17,7 @@ options, args = parser.parse_args()
 
 
 #### Init ####
-initTime = str(datetime.datetime.now().hour) + "_" +  str(datetime.datetime.now().minute) + "_" +  str(datetime.datetime.now().second)
+initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
 MongoDB = MongoClient().FormattedLogs[options.dbName if options.dbName is not "" else options.log + ' - ' + initTime]
 startTime = datetime.datetime.now()
 MongoDB.create_index('index', background=True)
@@ -53,7 +53,13 @@ def formatLine(lines, index):
 			#### Set all required vars ####
 			ip = cleandedLine[0].split(' ')[0]
 			date = cleandedLine[0].split(' ')[3].split(':')[0].replace('[', '')
-			time = cleandedLine[0].split(' ')[3].split(':')[1]
+
+			hour = cleandedLine[0].split(' ')[3].split(':')[1]
+			minute = cleandedLine[0].split(' ')[3].split(':')[2]
+			second = cleandedLine[0].split(' ')[3].split(':')[3]
+
+
+
 			timezone = cleandedLine[0].split(' ')[4].replace(']', '')
 			method = cleandedLine[1].split(' ')[0]
 			requestUrl = cleandedLine[1].split(' ')[1]
@@ -63,7 +69,7 @@ def formatLine(lines, index):
 			uagent = cleandedLine[4]
 
 			#### Create line object and insert it in mongodb
-			lineObj = FormattedLine(index, ip, date, time, timezone, method, requestUrl, code, size, url, uagent)
+			lineObj = FormattedLine(index, ip, date, hour, minute, second, timezone, method, requestUrl, code, size, url, uagent)
 			MongoDB.insert_one(lineObj.__dict__)
 			index += 1
 

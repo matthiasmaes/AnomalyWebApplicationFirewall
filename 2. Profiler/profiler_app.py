@@ -71,12 +71,12 @@ def GeoLocate(ip):
 def calculateRatio(url, metric, data):
 	""" Method for calculating the ratio for a given metric """
 
-	if data is not '' or data is not None:
 		currRecord = OutputMongoDB.find_one({"url": url })
 
 		#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 		for metricEntry in currRecord[metric]:
-			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
+			if metricEntry is not '' or metricEntry is not None:
+				OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
 def calculateRatioParam(url, pKey, pValue):
 	""" Method for calculating the ratio for a given metric """
@@ -153,7 +153,7 @@ def processLine(start, index):
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
-		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + inputLine['time'] + '.counter': 1 }})
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + inputLine['hour'] + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
@@ -201,7 +201,7 @@ def processLine(start, index):
 		#### Calculate ratio for metrics ####
 		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
 		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent_Replaced)
-		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['time'])
+		calculateRatio(urlWithoutQuery, 'metric_time', inputLine['hour'])
 		calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
 		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
 		calculateRatio(urlWithoutQuery, 'metric_request', urlWithoutPoints)
