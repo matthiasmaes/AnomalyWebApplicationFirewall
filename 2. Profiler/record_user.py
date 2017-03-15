@@ -6,17 +6,13 @@ class Record_User(object):
 		self.location = location
 		self.totalConnections = 0
 
-
+		#### Init all metrics ####
 		self.metric_agent = {}
 		self.metric_time = {}
 		self.metric_day = {}
 		self.metric_param = {}
-
 		self.metric_url = {}
 		self.metric_request = {}
-
-
-
 
 	def __eq__(self, other):
 		""" Test if records are equal """

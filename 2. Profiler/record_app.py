@@ -6,6 +6,7 @@ class Record_App(object):
 		self.expected_method = expected_method
 		self.totalConnections = 0
 
+		#### Init all metrics ####
 		self.metric_geo = {}
 		self.metric_agent = {}
 		self.metric_time = {}

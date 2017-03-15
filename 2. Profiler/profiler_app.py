@@ -34,12 +34,15 @@ OutputMongoDB = MongoClient().profile_app['profile_app_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 BotMongoDB = MongoClient().config_static.profile_bots
 
+
 #### Place index on url field to speed up searches through db ####
 OutputMongoDB.create_index('url', background=True)
+
 
 #### Determening lines to process####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 diffLines = int(options.endindex) - int(options.startIndex) + 1
+
 
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -70,7 +73,8 @@ def calculateRatio(url, metric, data):
 
 	if data is not '' or data is not None:
 		currRecord = OutputMongoDB.find_one({"url": url })
-		OutputMongoDB.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
+
+		#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 		for metricEntry in currRecord[metric]:
 			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
@@ -78,12 +82,13 @@ def calculateRatioParam(url, pKey, pValue):
 	""" Method for calculating the ratio for a given metric """
 
 	currRecord = OutputMongoDB.find_one({"url": url })
-	OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + pValue + '.ratio': float(currRecord['metric_param'][pKey][pValue]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
 
 	for param in currRecord['metric_param'][pKey]:
 		try:
+			#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 			OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
-		except Exception:
+		except TypeError as e:
+			#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
 			pass
 
 
@@ -93,10 +98,13 @@ def processLine(start, index):
 
 	for inputLine in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
 
+
 		#### Local variable declaration ####
 		global converted
 		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
 
+
+		#### Split time and convert date to day of week ####
 		splittedTime = inputLine['date'].split('/')
 		connectionDay = datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]), 0, 0, 0).strftime("%A")
 
@@ -136,7 +144,6 @@ def processLine(start, index):
 				filetype = 'url'
 
 
-
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
 			OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
@@ -162,6 +169,7 @@ def processLine(start, index):
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
 
+
 					#### Determine type of param ####
 					try:
 						int(pValue)
@@ -181,6 +189,7 @@ def processLine(start, index):
 					bulk.find({"url": urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
 					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 					bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
+
 
 		#### Execute batch ####
 		try:

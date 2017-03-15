@@ -104,13 +104,9 @@ def processLine(start, index):
 		queryString = [element.replace('.', '_') for element in queryString]
 
 
-
-
-
 		#### Insert record if it doesn't exists ####
 		if OutputMongoDB.find({'ip': inputLine['ip']}).count() == 0:
 			OutputMongoDB.insert_one(Record_User(inputLine['ip'], GeoLocate(inputLine['ip'])).__dict__)
-
 
 
 		#### Setup bulk stream ####
