@@ -74,11 +74,11 @@ def calculateRatio(ip, metric, data):
 	""" Method for calculating the ratio for a given metric """
 
 	if data is not '' or data is not None:
-		currRecord = OutputMongoDB.find_one({"ip": ip })
+		currRecord = OutputMongoDB.find_one({"general_ip": ip })
 
 		#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 		for metricEntry in currRecord[metric]:
-			OutputMongoDB.update({'ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
+			OutputMongoDB.update({'general_ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
 
 def processLine(start, index):
@@ -119,28 +119,21 @@ def processLine(start, index):
 
 
 		#### Insert record if it doesn't exists ####
-		if OutputMongoDB.find({'ip': inputLine['ip']}).count() == 0:
+		if OutputMongoDB.find({'general_ip': inputLine['ip']}).count() == 0:
 			OutputMongoDB.insert_one(Record_User(inputLine['ip'], GeoLocate(inputLine['ip'])).__dict__)
 
 
 		#### Setup bulk stream ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'totalConnections': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-
-
-
-		# bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'timeline.' + requestUrl_Replaced : {'timestamp': fullTime, 'index': inputLine['index']} }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): requestUrl_Replaced}})
-
-		## If index ++ exists, diff with next == time spent on index
-
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): requestUrl_Replaced}})
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -162,10 +155,10 @@ def processLine(start, index):
 					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
 
 					#### Add to bulk updates ####
-					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
-					bulk.find({"ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({"ip": inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 
 		try:
 			bulk.execute()
@@ -173,23 +166,18 @@ def processLine(start, index):
 			print e.details
 
 
-
-		timelineDict = OutputMongoDB.find_one({'ip' : inputLine['ip']})['timeline']
-		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: t[0])).items())
-
+		timelineDict = OutputMongoDB.find_one({'general_ip' : inputLine['ip']})['general_timeline']
+		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
 		for event in timelineList:
 			if timelineList.index(event) == len(timelineList) - 1:
 				break
 
-
-
 			time1 = datetime.datetime.strptime(event[0], '%d/%b/%Y %H:%M:%S')
 			time2 = datetime.datetime.strptime(timelineList[timelineList.index(event)+1][0], '%d/%b/%Y %H:%M:%S')
 
 
-
-			OutputMongoDB.update_one({ 'ip' : inputLine['ip'] }, { '$set' :{'metric_timespent.' + requestUrl_Replaced : str(time2 - time1)}})
+			OutputMongoDB.update_one({ 'general_ip' : inputLine['ip'] }, { '$set' :{'metric_timespent.' + requestUrl_Replaced : str(time2 - time1)}})
 
 
 

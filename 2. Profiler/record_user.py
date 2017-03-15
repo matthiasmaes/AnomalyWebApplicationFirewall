@@ -2,10 +2,10 @@ class Record_User(object):
 	""" Record in profile """
 
 	def __init__(self, ip, location):
-		self.ip = ip
-		self.location = location
-		self.totalConnections = 0
-		self.timeline = {}
+		self.general_ip = ip
+		self.general_location = location
+		self.general_totalConnections = 0
+		self.general_timeline = {}
 
 		#### Init all metrics ####
 		self.metric_agent = {}
@@ -14,7 +14,6 @@ class Record_User(object):
 		self.metric_param = {}
 		self.metric_url = {}
 		self.metric_request = {}
-
 		self.metric_timespent = {}
 
 	def __eq__(self, other):
