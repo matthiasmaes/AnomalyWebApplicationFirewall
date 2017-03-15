@@ -1,7 +1,7 @@
 class FormattedLine(object):
 	""" Unified object originating from different log formats """
 
-	def __init__(self, index, ip, date, hour, minute, second, timezone, method, requestUrl, code, size, url, uagent):
+	def __init__(self, index, ip, date, hour, minute, second, fulltime, method, requestUrl, code, size, url, uagent):
 		self.index = index
 		self.ip = ip
 
@@ -9,7 +9,7 @@ class FormattedLine(object):
 		self.hour = hour
 		self.minute = minute
 		self.second = second
-		self.timezone = timezone
+		self.fulltime = fulltime
 
 
 		self.method = method

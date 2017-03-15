@@ -6,6 +6,9 @@ import calendar
 import math
 import IP2Location
 import dns.resolver
+
+from collections import OrderedDict
+
 from pymongo import MongoClient
 from pymongo import ASCENDING, DESCENDING
 from optparse import OptionParser
@@ -24,7 +27,7 @@ parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False,
 parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO2", help="Input via mongo")
+parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
 parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 options, args = parser.parse_args()
@@ -86,9 +89,7 @@ def processLine(start, index):
 
 		#### Local variable declaration ####
 		global converted
-		splittedTime = inputLine['date'].split('/')
-		connectionDay = datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]), 0, 0, 0).strftime("%A")
-
+		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
 
 		#### Ending conditions ####
 		if inputLine is None:
@@ -130,14 +131,13 @@ def processLine(start, index):
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + inputLine['hour'] + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 
 
-		fullTime = inputLine['hour'] + ':'+ inputLine['minute'] + ':'+ inputLine['second']
 
 		# bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'timeline.' + requestUrl_Replaced : {'timestamp': fullTime, 'index': inputLine['index']} }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'timeline.' + fullTime: requestUrl_Replaced}})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): requestUrl_Replaced}})
 
 		## If index ++ exists, diff with next == time spent on index
 
@@ -174,35 +174,29 @@ def processLine(start, index):
 
 
 
+		timelineDict = OutputMongoDB.find_one({'ip' : inputLine['ip']})['timeline']
+		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: t[0])).items())
 
-		timelineDict = OutputMongoDB.find_one({'ip' : inputLine['ip']}, sort=[('timeline', DESCENDING)])['timeline']
-		timelineList = map(list, timelineDict.items())
 
 		for event in timelineList:
 			if timelineList.index(event) == len(timelineList) - 1:
 				break
 
-			OutputMongoDB.update_one({ 'ip' : inputLine['ip'] }, { '$set' :{'metric_timespent.' + requestUrl_Replaced :5}})
 
 
-			time1 = event[0].split(':')
-			time2 = timelineList[timelineList.index(event)+1][0].split(':')
-			print int(time1[0])
-			print int(time2[0])
-			print int(time2[0]) - int(time1[0])
-			result = str(int(time2[0]) - int(time2[0])) + str(int(time2[1]) - int(time2[1])) + str(int(time2[2]) - int(time2[2]))
-
-			print result
+			time1 = datetime.datetime.strptime(event[0], '%d/%b/%Y %H:%M:%S')
+			time2 = datetime.datetime.strptime(timelineList[timelineList.index(event)+1][0], '%d/%b/%Y %H:%M:%S')
 
 
-		print '-------------'
+
+			OutputMongoDB.update_one({ 'ip' : inputLine['ip'] }, { '$set' :{'metric_timespent.' + requestUrl_Replaced : str(time2 - time1)}})
 
 
 
 		#### Calculate ratios ####
 		calculateRatio(inputLine['ip'], 'metric_agent', userAgent_Replaced)
-		calculateRatio(inputLine['ip'], 'metric_time', inputLine['hour'])
-		calculateRatio(inputLine['ip'], 'metric_day', connectionDay)
+		calculateRatio(inputLine['ip'], 'metric_time', timestamp.strftime("%H"))
+		calculateRatio(inputLine['ip'], 'metric_day', timestamp.strftime("%A"))
 		calculateRatio(inputLine['ip'], 'metric_url', urlWithoutQuery)
 		calculateRatio(inputLine['ip'], 'metric_request', requestUrl_Replaced)
 

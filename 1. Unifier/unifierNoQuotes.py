@@ -59,8 +59,8 @@ def formatLine(lines, index):
 			second = cleandedLine[0].split(' ')[3].split(':')[3]
 
 
+			fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
 
-			timezone = cleandedLine[0].split(' ')[4].replace(']', '')
 			method = cleandedLine[1].split(' ')[0]
 			requestUrl = cleandedLine[1].split(' ')[1]
 			code = cleandedLine[2].split(' ')[0]
@@ -69,13 +69,13 @@ def formatLine(lines, index):
 			uagent = cleandedLine[4]
 
 			#### Create line object and insert it in mongodb
-			lineObj = FormattedLine(index, ip, date, hour, minute, second, timezone, method, requestUrl, code, size, url, uagent)
+			lineObj = FormattedLine(index, ip, date, hour, minute, second, fulltime, method, requestUrl, code, size, url, uagent)
 			MongoDB.insert_one(lineObj.__dict__)
 			index += 1
 
-		except Exception:
+		except Exception as e:
 			#print 'Following error occured: {} on line {}'.format(line, e)
-			pass
+			print e
 
 	global activeWorkers
 	activeWorkers -= 1
