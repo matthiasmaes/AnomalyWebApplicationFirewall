@@ -34,12 +34,15 @@ OutputMongoDB = MongoClient().profile_user['profile_user_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 BotMongoDB = MongoClient().config_static.profile_bots
 
+
 #### Place index on url field to speed up searches through db ####
 OutputMongoDB.create_index('url', background=True)
+
 
 #### Determening lines to process####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 diffLines = int(options.endindex) - int(options.startIndex) + 1
+
 
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -63,11 +66,22 @@ def GeoLocate(ip):
 			return "Domain translation disabled"
 
 
+def calculateRatio(ip, metric, data):
+	""" Method for calculating the ratio for a given metric """
+
+	if data is not '' or data is not None:
+		currRecord = OutputMongoDB.find_one({"ip": ip })
+
+		#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
+		for metricEntry in currRecord[metric]:
+			OutputMongoDB.update({'ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
+
 
 def processLine(start, index):
 	""" Assign workers with workload """
 
 	for inputLine in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
+
 
 		#### Local variable declaration ####
 		global converted
@@ -84,8 +98,6 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-
-
 
 
 		#### Split querystring into params ####
@@ -113,8 +125,8 @@ def processLine(start, index):
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'totalConnections': 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery : 1 }})
-		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced : 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
+		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({ "ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
@@ -150,6 +162,15 @@ def processLine(start, index):
 			bulk.execute()
 		except Exception as e:
 			print e.details
+
+
+		#### Calculate ratios ####
+		calculateRatio(inputLine['ip'], 'metric_agent', userAgent_Replaced)
+		calculateRatio(inputLine['ip'], 'metric_time', inputLine['time'])
+		calculateRatio(inputLine['ip'], 'metric_day', connectionDay)
+
+		calculateRatio(inputLine['ip'], 'metric_url', urlWithoutQuery)
+		calculateRatio(inputLine['ip'], 'metric_request', requestUrl_Replaced)
 
 
 		#### Update progress ####
