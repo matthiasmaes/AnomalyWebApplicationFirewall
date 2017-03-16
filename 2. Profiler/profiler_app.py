@@ -1,7 +1,6 @@
 import progressbar, string
 import datetime
 import threading
-import calendar
 import math
 import IP2Location
 import dns.resolver
@@ -68,7 +67,7 @@ def GeoLocate(ip):
 
 
 
-def calculateRatio(url, metric, data):
+def calculateRatio(url, metric):
 	""" Method for calculating the ratio for a given metric """
 
 	currRecord = OutputMongoDB.find_one({"url": url })
@@ -78,7 +77,7 @@ def calculateRatio(url, metric, data):
 		if metricEntry is not '' or metricEntry is not None:
 			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
-def calculateRatioParam(url, pKey, pValue):
+def calculateRatioParam(url, pKey):
 	""" Method for calculating the ratio for a given metric """
 
 	currRecord = OutputMongoDB.find_one({"url": url })
@@ -87,7 +86,7 @@ def calculateRatioParam(url, pKey, pValue):
 		try:
 			#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 			OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
-		except TypeError as e:
+		except TypeError:
 			#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
 			pass
 

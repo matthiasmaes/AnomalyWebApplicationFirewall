@@ -144,8 +144,10 @@ def processRequest(request):
 
 
 	#### Delete packet from stream ####
+
+	#### REFACTORED SOME THINGS CHECK LATER IF STILL WORKS!!!
 	try:
-		StreamMongoDB.delete_one({'_id': packet['_id']})
+		StreamMongoDB.delete_one({'_id': request['_id']})
 	except Exception:
 		print 'Delete failed'
 

@@ -2,15 +2,13 @@ import progressbar
 import string
 import datetime
 import threading
-import calendar
 import math
 import IP2Location
-import dns.resolver, json
+import dns.resolver
 
 from collections import OrderedDict
 
 from pymongo import MongoClient
-from pymongo import ASCENDING, DESCENDING
 from optparse import OptionParser
 from record_user import Record_User
 
@@ -70,15 +68,15 @@ def GeoLocate(ip):
 			return "Domain translation disabled"
 
 
-def calculateRatio(ip, metric, data):
+def calculateRatio(ip, metric):
 	""" Method for calculating the ratio for a given metric """
 
-	if data is not '' or data is not None:
 		currRecord = OutputMongoDB.find_one({"general_ip": ip })
 
 		#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 		for metricEntry in currRecord[metric]:
-			OutputMongoDB.update({'general_ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
+			if metricEntry is not '' or metricEntry is not None:
+				OutputMongoDB.update({'general_ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
 
 def processLine(start, index):
