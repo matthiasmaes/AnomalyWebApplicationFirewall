@@ -5,7 +5,7 @@ from formattedLine import FormattedLine
 
 #### Init options ####
 parser = OptionParser()
-parser.add_option("-l", "--log", action="store", dest="log", default="access.log", help="Input log file for profiler")
+parser.add_option("-l", "--log", action="store", dest="log", default="error.log", help="Input log file for profiler")
 parser.add_option("-f", "--format", action="store", dest="format", default="combined", help="Format of the input log")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="12", help="Amout of threats that can be used")
 parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
@@ -48,23 +48,14 @@ def formatLine(lines, index):
 		try:
 
 			#### Repace empyt parameters with -, in order to not confus the split ####
-			cleandedLine = filter(None, [x.strip() for x in line.replace('""','"-"').split('"')])
+			cleandedLine = filter(None, [x.strip() for x in line.replace(']','').split('[')])
 
 			#### Set all required vars ####
-			ip = cleandedLine[0].split(' ')[0]
-
-			fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
-
-			method = cleandedLine[1].split(' ')[0]
-			requestUrl = cleandedLine[1].split(' ')[1]
-			code = cleandedLine[2].split(' ')[0]
-			size = cleandedLine[2].split(' ')[1]
-			url = cleandedLine[3]
-			uagent = cleandedLine[4]
+			ip = cleandedLine[2].split(' ')[1]
+			fulltime = cleandedLine[0]
 
 			#### Create line object and insert it in mongodb
-			lineObj = FormattedLine(index, ip, fulltime, method, requestUrl, code, size, url, uagent)
-			MongoDB.insert_one(lineObj.__dict__)
+			MongoDB.insert_one({'ip': ip, 'fulltime': fulltime})
 			index += 1
 
 		except Exception as e:
