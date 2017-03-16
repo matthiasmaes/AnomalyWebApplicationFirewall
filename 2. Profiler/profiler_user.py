@@ -160,16 +160,19 @@ def processLine(start, index):
 					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
 					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 
+		#### Execute bulk statement ####
 		try:
 			bulk.execute()
 		except Exception as e:
 			print e.details
 
 
+		#### Setup timeline ####
 		timelineDict = OutputMongoDB.find_one({'general_ip' : inputLine['ip']})['general_timeline']
 		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
 		for event in timelineList:
+			#### Calculate avg time spent for each base url ####
 			if timelineList.index(event) == len(timelineList) - 1:
 				break
 
