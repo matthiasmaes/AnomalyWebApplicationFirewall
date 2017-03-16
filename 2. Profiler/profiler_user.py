@@ -71,12 +71,12 @@ def GeoLocate(ip):
 def calculateRatio(ip, metric):
 	""" Method for calculating the ratio for a given metric """
 
-		currRecord = OutputMongoDB.find_one({"general_ip": ip })
+	currRecord = OutputMongoDB.find_one({"general_ip": ip })
 
-		#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
-		for metricEntry in currRecord[metric]:
-			if metricEntry is not '' or metricEntry is not None:
-				OutputMongoDB.update({'general_ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
+	#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
+	for metricEntry in currRecord[metric]:
+		if metricEntry is not '' or metricEntry is not None:
+			OutputMongoDB.update({'general_ip': ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
 
 def processLine(start, index):
@@ -132,6 +132,9 @@ def processLine(start, index):
 		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
+
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
+
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -192,11 +195,14 @@ def processLine(start, index):
 
 
 		#### Calculate ratios ####
-		calculateRatio(inputLine['ip'], 'metric_agent', userAgent_Replaced)
-		calculateRatio(inputLine['ip'], 'metric_time', timestamp.strftime("%H"))
-		calculateRatio(inputLine['ip'], 'metric_day', timestamp.strftime("%A"))
-		calculateRatio(inputLine['ip'], 'metric_url', urlWithoutQuery)
-		calculateRatio(inputLine['ip'], 'metric_request', requestUrl_Replaced)
+		calculateRatio(inputLine['ip'], 'metric_agent')
+		calculateRatio(inputLine['ip'], 'metric_time')
+		calculateRatio(inputLine['ip'], 'metric_day')
+		calculateRatio(inputLine['ip'], 'metric_url')
+		calculateRatio(inputLine['ip'], 'metric_request')
+		calculateRatio(inputLine['ip'], 'metric_status')
+
+
 
 
 		#### Update progress ####

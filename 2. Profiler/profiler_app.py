@@ -153,6 +153,9 @@ def processLine(start, index):
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
 		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 
+		bulk.find({"url": urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
+
+
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -192,12 +195,13 @@ def processLine(start, index):
 
 
 		#### Calculate ratio for metrics ####
-		calculateRatio(urlWithoutQuery, 'metric_geo', GeoLocate(inputLine['ip']))
-		calculateRatio(urlWithoutQuery, 'metric_agent', userAgent_Replaced)
-		calculateRatio(urlWithoutQuery, 'metric_time', timestamp.strftime("%H"))
-		calculateRatio(urlWithoutQuery, 'metric_day', timestamp.strftime("%A"))
-		calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
-		calculateRatio(urlWithoutQuery, 'metric_request', urlWithoutPoints)
+		calculateRatio(urlWithoutQuery, 'metric_geo')
+		calculateRatio(urlWithoutQuery, 'metric_agent')
+		calculateRatio(urlWithoutQuery, 'metric_time')
+		calculateRatio(urlWithoutQuery, 'metric_day')
+		calculateRatio(urlWithoutQuery, 'metric_ext')
+		calculateRatio(urlWithoutQuery, 'metric_request')
+		calculateRatio(urlWithoutQuery, 'metric_status')
 
 		if len(queryString) > 0:
 			for param in queryString:
@@ -206,7 +210,7 @@ def processLine(start, index):
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
 
-					calculateRatioParam(urlWithoutQuery, pKey, pValue)
+					calculateRatioParam(urlWithoutQuery, pKey)
 
 					try:
 						orgAvg = OutputMongoDB.find_one({"url": urlWithoutQuery})['metric_param'][pKey]
