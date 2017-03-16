@@ -248,39 +248,49 @@ def anomaly_ParamUnknown(profileRecord, requestRecord):
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
-	diffRequests = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
-	print '[ALERT] Total conncections has been exceeded ({})'.format(diffRequests) if threshold_counter < diffRequests else '[OK] Total connections safe ({})'.format(diffRequests)
+	diff = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
+	print '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
 
 def anomaly_GeoCounter (profileRecord, requestRecord):
 	""" Detect to many connections from specific country """
-	diffGeoCounter = int(requestRecord['metric_geo'][tmpLastObj.location]['counter']) - int(profileRecord['metric_geo'][tmpLastObj.location]['counter'])
-	print '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diffGeoCounter, tmpLastObj.location) if threshold_counter < diffGeoCounter else '[OK] Connections from location safe ({} | {})'.format(diffGeoCounter, tmpLastObj.location)
+	diff = int(requestRecord['metric_geo'][tmpLastObj.location]['counter']) - int(profileRecord['metric_geo'][tmpLastObj.location]['counter'])
+	print '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diff, tmpLastObj.location) if threshold_counter < diff else '[OK] Connections from location safe ({} | {})'.format(diff, tmpLastObj.location)
 
 def anomaly_TimeCounter (profileRecord, requestRecord):
 	""" Detect to many connections at specific time """
-	diffTimeCounter = int(requestRecord['metric_time'][tmpLastObj.time]['counter']) - int(profileRecord['metric_time'][tmpLastObj.time]['counter'])
-	print '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diffTimeCounter, tmpLastObj.time) if threshold_counter < diffTimeCounter else '[OK] Connections at time safe ({} | {}h)'.format(diffTimeCounter, tmpLastObj.time)
+	diff = int(requestRecord['metric_time'][tmpLastObj.time]['counter']) - int(profileRecord['metric_time'][tmpLastObj.time]['counter'])
+	print '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diff, tmpLastObj.time) if threshold_counter < diff else '[OK] Connections at time safe ({} | {}h)'.format(diff, tmpLastObj.time)
 
 def anomaly_AgentCounter (profileRecord, requestRecord):
 	""" Detect to many connections with specific agent """
-	diffAgentCounter = int(requestRecord['metric_agent'][tmpLastObj.agent]['counter']) - int(profileRecord['metric_agent'][tmpLastObj.agent]['counter'])
-	print '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diffAgentCounter, tmpLastObj.agent) if threshold_counter < diffAgentCounter else '[OK] Connections from user agent safe ({} | {}h)'.format(diffAgentCounter, tmpLastObj.agent)
+	diff = int(requestRecord['metric_agent'][tmpLastObj.agent]['counter']) - int(profileRecord['metric_agent'][tmpLastObj.agent]['counter'])
+	print '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diff, tmpLastObj.agent) if threshold_counter < diff else '[OK] Connections from user agent safe ({} | {}h)'.format(diff, tmpLastObj.agent)
 
 def anomaly_ExtCounter (profileRecord, requestRecord):
 	""" Detect to many connections to specific file types """
-	diffExtCounter = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
-	print '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diffExtCounter, tmpLastObj.ext) if threshold_counter < diffExtCounter else '[OK] Connections for filetype safe ({} | {})'.format(diffExtCounter, tmpLastObj.ext)
+	diff = int(requestRecord['metric_ext'][tmpLastObj.ext]['counter']) - int(profileRecord['metric_ext'][tmpLastObj.ext]['counter'])
+	print '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diff, tmpLastObj.ext) if threshold_counter < diff else '[OK] Connections for filetype safe ({} | {})'.format(diff, tmpLastObj.ext)
 
 def anomaly_RequestCounter (profileRecord, requestRecord):
 	""" Detect to many connections to specific resource file """
-	diffRequestCounter = int(requestRecord['metric_request'][tmpLastObj.request]['counter']) - int(profileRecord['metric_request'][tmpLastObj.request]['counter'])
-	print '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diffRequestCounter, tmpLastObj.request) if threshold_counter < diffRequestCounter else '[OK] Requests for resource safe ({} | {})'.format(diffRequestCounter, tmpLastObj.request)
+	diff = int(requestRecord['metric_request'][tmpLastObj.request]['counter']) - int(profileRecord['metric_request'][tmpLastObj.request]['counter'])
+	print '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diff, tmpLastObj.request) if threshold_counter < diff else '[OK] Requests for resource safe ({} | {})'.format(diff, tmpLastObj.request)
+
+def anomaly_StatusCounter (profileRecord, requestRecord):
+	""" Detect to many connections to specific resource file """
+	diff = int(requestRecord['metric_status'][tmpLastObj.request]['counter']) - int(profileRecord['metric_status'][tmpLastObj.request]['counter'])
+	print '[ALERT] More status than usual ({} | {})'.format(diff, tmpLastObj.request) if threshold_counter < diff else '[OK] Status for resource safe ({} | {})'.format(diff, tmpLastObj.request)
+
+def anomaly_MethodCounter (profileRecord, requestRecord):
+	""" Detect to many connections to specific resource file """
+	diff = int(requestRecord['metric_method'][tmpLastObj.request]['counter']) - int(profileRecord['metric_method'][tmpLastObj.request]['counter'])
+	print '[ALERT] More methods than usual ({} | {})'.format(diff, tmpLastObj.request) if threshold_counter < diff else '[OK] Methods for resource safe ({} | {})'.format(diff, tmpLastObj.request)
 
 def anomaly_ParamCounter (profileRecord, requestRecord):
 	""" Detect to many connections on specific querystring parameter """
 	for param in tmpLastObj.param:
-		diffParamCounter = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		print '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diffParamCounter, param) if threshold_counter < diffParamCounter else '[OK] Connections with parameter safe ({} | {})'.format(diffParamCounter, param)
+		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
+		print '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diff, param) if threshold_counter < diff else '[OK] Connections with parameter safe ({} | {})'.format(diff, param)
 
 
 
@@ -290,39 +300,51 @@ def anomaly_ParamCounter (profileRecord, requestRecord):
 
 def anomaly_GeoRatio(profileRecord, requestRecord):
 	""" Detect divergent geolocation ratio """
-	diffGeoRatio = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
-	print '[OK] Ratio geolocation safe ({} | {})'.format(diffGeoRatio, tmpLastObj.location) if -threshold_ratio <= diffGeoRatio <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diffGeoRatio, tmpLastObj.location)
+	diff = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
+	print '[OK] Ratio geolocation safe ({} | {})'.format(diff, tmpLastObj.location) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diff, tmpLastObj.location)
 
 
 def anomaly_TimeRatio(profileRecord, requestRecord):
 	""" Detect divergent time ratio """
-	diffTimeRatio = float(requestRecord['metric_time'][tmpLastObj.time]['ratio']) - float(profileRecord['metric_time'][tmpLastObj.time]['ratio'])
-	print '[OK] Ratio time safe ({} | {}h)'.format(diffTimeRatio, tmpLastObj.time) if -threshold_ratio <= diffTimeRatio <= threshold_ratio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diffTimeRatio, tmpLastObj.time)
+	diff = float(requestRecord['metric_time'][tmpLastObj.time]['ratio']) - float(profileRecord['metric_time'][tmpLastObj.time]['ratio'])
+	print '[OK] Ratio time safe ({} | {}h)'.format(diff, tmpLastObj.time) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diff, tmpLastObj.time)
 
 
 def anomaly_AgentRatio(profileRecord, requestRecord):
 	""" Detect divergent agent ratio """
-	diffAgentRatio = float(requestRecord['metric_agent'][tmpLastObj.agent]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj.agent]['ratio'])
-	print '[OK] Ratio user agent safe ({} | {})'.format(diffAgentRatio, tmpLastObj.agent) if -threshold_ratio <= diffAgentRatio <= threshold_ratio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diffAgentRatio, tmpLastObj.agent)
+	diff = float(requestRecord['metric_agent'][tmpLastObj.agent]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj.agent]['ratio'])
+	print '[OK] Ratio user agent safe ({} | {})'.format(diff, tmpLastObj.agent) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diff, tmpLastObj.agent)
 
 
 def anomaly_ExtRatio(profileRecord, requestRecord):
 	""" Detect divergent file type ratio """
-	diffExtRatio = float(requestRecord['metric_ext'][tmpLastObj.ext]['ratio']) - float(profileRecord['metric_ext'][tmpLastObj.ext]['ratio'])
-	print '[OK] Ratio file extension safe ({} | {})'.format(diffExtRatio, tmpLastObj.ext) if -threshold_ratio <= diffExtRatio <= threshold_ratio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diffExtRatio, tmpLastObj.ext)
+	diff = float(requestRecord['metric_ext'][tmpLastObj.ext]['ratio']) - float(profileRecord['metric_ext'][tmpLastObj.ext]['ratio'])
+	print '[OK] Ratio file extension safe ({} | {})'.format(diff, tmpLastObj.ext) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diff, tmpLastObj.ext)
 
 
 def anomaly_RequestRatio(profileRecord, requestRecord):
 	""" Detect divergent request ratio """
-	diffRequestRatio = float(requestRecord['metric_request'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_request'][tmpLastObj.request]['ratio'])
-	print '[OK] Ratio resource requests safe ({} | {})'.format(diffRequestRatio, tmpLastObj.request) if -threshold_ratio <= diffRequestRatio <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diffRequestRatio, tmpLastObj.request)
+	diff = float(requestRecord['metric_request'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_request'][tmpLastObj.request]['ratio'])
+	print '[OK] Ratio resource requests safe ({} | {})'.format(diff, tmpLastObj.request) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, tmpLastObj.request)
+
+
+def anomaly_StatusRatio(profileRecord, requestRecord):
+	""" Detect divergent request ratio """
+	diff = float(requestRecord['metric_status'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_status'][tmpLastObj.request]['ratio'])
+	print '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj.request) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj.request)
+
+
+def anomaly_MethodRatio(profileRecord, requestRecord):
+	""" Detect divergent request ratio """
+	diff = float(requestRecord['metric_method'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_method'][tmpLastObj.request]['ratio'])
+	print '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj.request) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj.request)
 
 
 def anomaly_ParamRatio(profileRecord, requestRecord):
 	""" Detect divergent param ratio """
 	for param in tmpLastObj.param:
-		diffParamRatio = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		print '[OK] Ratio resource requests safe ({} | {})'.format(diffParamRatio, param) if -threshold_ratio <= diffParamRatio <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diffParamRatio, param)
+		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
+		print '[OK] Ratio resource requests safe ({} | {})'.format(diff, param) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, param)
 
 
 ##############
