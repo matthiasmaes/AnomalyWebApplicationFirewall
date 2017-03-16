@@ -5,7 +5,7 @@ import threading
 import calendar
 import math
 import IP2Location
-import dns.resolver
+import dns.resolver, json
 
 from collections import OrderedDict
 
@@ -133,7 +133,7 @@ def processLine(start, index):
 		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): requestUrl_Replaced}})
+		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -176,8 +176,17 @@ def processLine(start, index):
 			time1 = datetime.datetime.strptime(event[0], '%d/%b/%Y %H:%M:%S')
 			time2 = datetime.datetime.strptime(timelineList[timelineList.index(event)+1][0], '%d/%b/%Y %H:%M:%S')
 
+			delta = time2 - time1
 
-			OutputMongoDB.update_one({ 'general_ip' : inputLine['ip'] }, { '$set' :{'metric_timespent.' + requestUrl_Replaced : str(time2 - time1)}})
+			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
+				counter = OutputMongoDB.find_one({ 'general_ip' : inputLine['ip'] })['metric_url'][urlWithoutQuery]['counter']
+				try:
+					orgAvg = OutputMongoDB.find_one({ 'general_ip' : inputLine['ip'] })['metric_timespent'][urlWithoutQuery]
+					newAvg = orgAvg + ((delta.total_seconds() - orgAvg) / counter)
+				except KeyError:
+					newAvg = delta.total_seconds()
+				finally:
+					OutputMongoDB.update_one({ 'general_ip' : inputLine['ip'] }, { '$set' : {'metric_timespent.' + urlWithoutQuery : int(newAvg)}})
 
 
 
