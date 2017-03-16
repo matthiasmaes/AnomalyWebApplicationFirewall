@@ -15,7 +15,8 @@ class Record_User(object):
 		self.metric_url = {}
 		self.metric_request = {}
 		self.metric_timespent = {}
-
+		self.metric_status = {}
+		self.metric_method = {}
 	def __eq__(self, other):
 		""" Test if records are equal """
 		return self.ip == other.ip

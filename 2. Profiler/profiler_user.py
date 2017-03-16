@@ -71,7 +71,7 @@ def GeoLocate(ip):
 def calculateRatio(ip, metric):
 	""" Method for calculating the ratio for a given metric """
 
-	currRecord = OutputMongoDB.find_one({"general_ip": ip })
+	currRecord = OutputMongoDB.find_one({'general_ip': ip })
 
 	#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
 	for metricEntry in currRecord[metric]:
@@ -124,17 +124,17 @@ def processLine(start, index):
 		#### Setup bulk stream ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'general_totalConnections': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
 
-		bulk.find({ "general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
-
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -156,10 +156,10 @@ def processLine(start, index):
 					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
 
 					#### Add to bulk updates ####
-					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
-					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({"general_ip": inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 
 		#### Execute bulk statement ####
 		try:
@@ -201,6 +201,7 @@ def processLine(start, index):
 		calculateRatio(inputLine['ip'], 'metric_url')
 		calculateRatio(inputLine['ip'], 'metric_request')
 		calculateRatio(inputLine['ip'], 'metric_status')
+		calculateRatio(inputLine['ip'], 'metric_method')
 
 
 

@@ -14,6 +14,9 @@ class Record_App(object):
 		self.metric_ext = {}
 		self.metric_param = {}
 		self.metric_request = {}
+		self.metric_status = {}
+		self.metric_method = {}
+
 
 	def __eq__(self, other):
 		""" Test if records are equal """
