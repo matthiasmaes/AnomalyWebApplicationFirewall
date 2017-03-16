@@ -6,8 +6,10 @@ from lastAdded import LastAdded
 
 
 ProcessedMongo = MongoClient().Firewall.processed
-StreamMongoDB = MongoClient().Firewall.TestStream
+# StreamMongoDB = MongoClient().Firewall.TestStream
 ProfileMongoDB = MongoClient().profile_app.test
+ProfileMongoDB = MongoClient().profile_user.test
+
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 BotMongoDB = MongoClient().config_static.profile_bots
 
