@@ -8,6 +8,7 @@ from lastAdded import LastAdded
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
 ProfileMongoDB = MongoClient().Profiles.PROFILE
+IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 
 
 weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -173,6 +174,8 @@ def startAnomalyDetection(packet):
 	anomaly_RequestUnknown(profileRecord, requestRecord)
 	anomaly_ParamUnknown(profileRecord, requestRecord)
 
+	anomaly_IpStatic(requestRecord)
+
 
 
 #################
@@ -238,6 +241,19 @@ def anomaly_ParamUnknown(profileRecord, requestRecord):
 			anomaly_ParamRatio(profileRecord, requestRecord)
 		else:
 			print '[ALERT] Unfamiliar resource requested ({})'.format(param)
+
+
+
+
+
+#################
+#### STATICS ####
+#################
+
+
+def anomaly_IpStatic():
+	if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1:
+		print '[Alert] Blocklisted ip detected'
 
 
 
