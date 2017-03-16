@@ -14,12 +14,12 @@ while True:
 
 	counter = 1
 	for packet in setPackets:
-		print '[{}] REQUEST INFO: url: {}, time: {}, date: {}'.format(counter, packet['url'], packet['time'], packet['date'])
+		print '[{}] REQUEST INFO: url: {}, time: {}, date: {}'.format(counter, packet['url'], packet['fulltime'], packet['date'])
 		counter += 1
 
 	print ''
 	print 'Random requests'
-	print '[{}] REQUEST INFO: url: {}, time: {}, date: {}'.format(counter, randomPacket['url'], randomPacket['time'], randomPacket['date'])
+	print '[{}] REQUEST INFO: url: {}, time: {}, date: {}'.format(counter, randomPacket['url'], randomPacket['fulltime'], randomPacket['date'])
 	print ''
 
 	userInput = raw_input('Make your choice: ')

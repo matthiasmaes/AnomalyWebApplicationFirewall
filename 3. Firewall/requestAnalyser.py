@@ -7,15 +7,10 @@ from lastAdded import LastAdded
 
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
-ProfileMongoDB = MongoClient().Profiles.PROFILE
+ProfileMongoDB = MongoClient().profile_app.test
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
+BotMongoDB = MongoClient().config_static.profile_bots
 
-
-weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-
-with open('../2. Profiler/sources/bots.txt') as f:
-	bots = f.readlines()
-bots = [x.strip() for x in bots]
 
 
 tmpLastObj = LastAdded()
@@ -40,21 +35,22 @@ def GeoLocate(ip):
 		return 'Geolocation failed'
 
 
-
-def calculateRatio(url, metric, data):
+def calculateRatio(url, metric):
 	""" Method for calculating the ratio for a given metric """
-	currRecord = ProcessedMongo.find_one({"url": url })
-	ProcessedMongo.update({'url': url}, {'$set': { metric + '.' + data + '.ratio': float(currRecord[metric][data]['counter']) / float(currRecord['totalConnections'])}})
-	for metricEntry in currRecord[metric]:
-		ProcessedMongo.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
+	currRecord = ProcessedMongo.find_one({'url': url })
+
+	#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
+	for metricEntry in currRecord[metric]:
+		if metricEntry is not '' or metricEntry is not None:
+			ProcessedMongo.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
 
 
 def processRequest(request):
 	#### Local variable declaration ####
 	urlWithoutPoints = request['requestUrl'].replace('.', '_')
-	splittedTime = request['date'].split('/')
-	connectionDay = weekdays[(datetime.datetime(int(splittedTime[2]), int(list(calendar.month_abbr).index(splittedTime[1])), int(splittedTime[0]))).weekday()]
+	timestamp = datetime.datetime.strptime( request['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+	userAgent_Replaced = request['uagent'].replace('.', '_')
 
 
 	#### Ending conditions ####
@@ -71,16 +67,6 @@ def processRequest(request):
 	queryString = [element.replace('.', '_') for element in queryString]
 
 
-	#### Filter accessor based on uagent ####
-	if next((True for bot in bots if request['uagent'] in bot), False):
-		accessedBy = True
-	else:
-		accessedBy = False
-
-	userAgent = request['uagent'].replace('.', '_')
-
-
-	location = GeoLocate(request['ip'])
 
 	#### Determine file extension ####
 	try:
@@ -99,14 +85,17 @@ def processRequest(request):
 
 	#### Batch update all metrics ####
 	bulk = ProcessedMongo.initialize_unordered_bulk_op()
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'totalConnections': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_day.' + connectionDay + '.counter': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_time.' + request['time'] + '.counter': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_geo.' + location + '.counter': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_agent.' + userAgent + '.counter': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$set': { 'metric_agent.' + userAgent + '.bot': accessedBy }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
-	bulk.find({"url": urlWithoutQuery }).update({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(request['ip']) + '.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': request['uagent']}).count() == 0 else 'Bot' }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
+
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + request['code'] +'.counter': 1 }})
+	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + request['method'] +'.counter': 1 }})
 
 
 	#### Add querystring param ####
@@ -123,12 +112,16 @@ def processRequest(request):
 
 
 	#### Calculate ratio for metrics ####
-	calculateRatio(urlWithoutQuery, 'metric_geo', location)
-	calculateRatio(urlWithoutQuery, 'metric_agent', userAgent)
-	calculateRatio(urlWithoutQuery, 'metric_time', request['time'])
-	calculateRatio(urlWithoutQuery, 'metric_day', connectionDay)
-	calculateRatio(urlWithoutQuery, 'metric_ext', filetype)
-	calculateRatio(urlWithoutQuery, 'metric_request', urlWithoutPoints)
+	calculateRatio(urlWithoutQuery, 'metric_geo')
+	calculateRatio(urlWithoutQuery, 'metric_agent')
+	calculateRatio(urlWithoutQuery, 'metric_time')
+	calculateRatio(urlWithoutQuery, 'metric_day')
+	calculateRatio(urlWithoutQuery, 'metric_ext')
+	calculateRatio(urlWithoutQuery, 'metric_request')
+	calculateRatio(urlWithoutQuery, 'metric_status')
+	calculateRatio(urlWithoutQuery, 'metric_method')
+
+
 
 	if len(queryString) > 0:
 		for param in queryString:
@@ -137,9 +130,9 @@ def processRequest(request):
 
 
 	#### Create last added object ####
-	tmpLastObj.location = location
-	tmpLastObj.time = request['time']
-	tmpLastObj.agent = userAgent
+	tmpLastObj.location = GeoLocate(request['ip'])
+	tmpLastObj.time = request['fulltime']
+	tmpLastObj.agent = userAgent_Replaced
 	tmpLastObj.ext = filetype
 	tmpLastObj.request = urlWithoutPoints
 
@@ -250,12 +243,10 @@ def anomaly_ParamUnknown(profileRecord, requestRecord):
 #### STATICS ####
 #################
 
-
-def anomaly_IpStatic():
-	if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1:
-		print '[Alert] Blocklisted ip detected'
-
-
+#### only for user profiling ####
+def anomaly_IpStatic(requestRecord):
+	pass
+# 	print '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1 else '[OK] IP not blacklisted'
 
 
 ##################
@@ -263,6 +254,8 @@ def anomaly_IpStatic():
 ##################
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
+	print profileRecord
+	print requestRecord
 	""" Detect to many connections """
 	diff = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
 	print '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
