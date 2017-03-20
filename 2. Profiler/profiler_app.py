@@ -4,6 +4,7 @@ import threading
 import math
 import IP2Location
 import dns.resolver
+import helper
 from pymongo import MongoClient
 from optparse import OptionParser
 from record_app import Record_App
@@ -16,16 +17,7 @@ converted, activeWorkers = 0, 0
 
 
 #### Init options ####
-parser = OptionParser()
-parser.add_option("-p", "--ping", action="store_true", dest="ping", default=False, help="Try to resolve originating domains to ip for geolocation")
-parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False, help="Filter search engine bots")
-parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
-parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
-parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
-parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
-parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
-options, args = parser.parse_args()
+options, args = helper.setupParser()
 
 
 #### Init DB ####
@@ -49,34 +41,6 @@ progressBarObj.start()
 
 
 
-def GeoLocate(ip):
-	""" Method for translating ip-address to geolocation (country) """
-
-	try:
-		IP2LocObj = IP2Location.IP2Location();
-		IP2LocObj.open("sources\IP2GEODB.BIN");
-		return IP2LocObj.get_all(ip).country_long;
-	except Exception:
-		if options.ping:
-			try:
-				return IP2LocObj.get_all(dns.resolver.query(ip, 'A')[0]).country_long;
-			except Exception:
-				return "Geolocation failed"
-		else:
-			return "Domain translation disabled"
-
-
-
-def calculateRatio(url, metric):
-	""" Method for calculating the ratio for a given metric """
-
-	currRecord = OutputMongoDB.find_one({'url': url })
-
-	#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
-	for metricEntry in currRecord[metric]:
-		if metricEntry is not '' or metricEntry is not None:
-			OutputMongoDB.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
-
 def calculateRatioParam(url, pKey):
 	""" Method for calculating the ratio for a given metric """
 
@@ -95,12 +59,9 @@ def calculateRatioParam(url, pKey):
 def processLine(start, index):
 	""" Assign workers with workload """
 
-	for inputLine in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
+	global converted
 
-		#### Local variable declaration ####
-		global converted
-		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
-		timestamp = datetime.datetime.strptime( inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+	for inputLine in InputMongoDB.find()[start : start + int(options.linesPerThread)]:
 
 		#### Ending conditions ####
 		if inputLine is None:
@@ -113,17 +74,10 @@ def processLine(start, index):
 			progressBarObj.update(converted)
 
 
-		#### Split querystring into params ####
-		if '?' in inputLine['url']:
-			urlWithoutQuery = inputLine['url'].split('?')[0]
-			queryString = inputLine['url'].split('?')[1].split('&')
-		else:
-			urlWithoutQuery = inputLine['url']
-			queryString = ''
-		queryString = [element.replace('.', '_') for element in queryString]
-
-
-		#### Filter accessor based on uagent ####
+		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
+		timestamp = datetime.datetime.strptime( inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url'])
+		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
 		userAgent_Replaced = inputLine['uagent'].replace('.', '_')
 
 
@@ -144,15 +98,14 @@ def processLine(start, index):
 
 		#### Batch update all metrics ####
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
+		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(inputLine['ip']) + '.counter': 1 }})
+		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
-
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
 
@@ -196,14 +149,14 @@ def processLine(start, index):
 
 
 		#### Calculate ratio for metrics ####
-		calculateRatio(urlWithoutQuery, 'metric_geo')
-		calculateRatio(urlWithoutQuery, 'metric_agent')
-		calculateRatio(urlWithoutQuery, 'metric_time')
-		calculateRatio(urlWithoutQuery, 'metric_day')
-		calculateRatio(urlWithoutQuery, 'metric_ext')
-		calculateRatio(urlWithoutQuery, 'metric_request')
-		calculateRatio(urlWithoutQuery, 'metric_status')
-		calculateRatio(urlWithoutQuery, 'metric_method')
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_geo', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_agent', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_time', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_day', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_ext', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_request', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_status', OutputMongoDB)
+		helper.calculateRatio('url', urlWithoutQuery, 'metric_method', OutputMongoDB)
 
 
 		if len(queryString) > 0:
