@@ -24,7 +24,7 @@ threshold_counter = 5
 #### HELPERS ####
 #################
 
-def processRequest(inputRequest, keyValue):
+def processRequest(inputRequest, keyValue, otherkeyValue):
 	""" Assign workers with workload """
 
 	global activeWorkers
@@ -46,7 +46,7 @@ def processRequest(inputRequest, keyValue):
 	#### Batch update all metrics ####
 	bulk = ProcessedMongo.initialize_ordered_bulk_op()
 	bulk.find({'_id': keyValue }).update_one({'$inc': { 'general_totalConnections': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputRequest['ip']}})
+	bulk.find({'_id': keyValue }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): otherkeyValue}})
 	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_agent.' + inputRequest['uagent'].replace('.', '_') + '.counter': 1 }})
@@ -58,7 +58,7 @@ def processRequest(inputRequest, keyValue):
 	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputRequest['ip'], True) + '.counter': 1 }})
 
 	## INVESTIGATE ####
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_conn.' + inputRequest['ip'].replace('.', '_') + '.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_conn.' + otherkeyValue.replace('.', '_') + '.counter': 1 }})
 
 
 	#### Add querystring param ####
@@ -97,19 +97,18 @@ def processRequest(inputRequest, keyValue):
 		pass
 
 	#### Setup timeline ####
-	helper.makeTimeline(ProcessedMongo,  keyValue, keyValue.replace('.', '_'))
-
+	helper.makeTimeline(ProcessedMongo, keyValue, otherkeyValue.replace('.', '_'))
 
 
 	#### Calculate ratio for metrics ####
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_geo', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_agent', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_time', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_day', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_ext', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_request', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_status', ProcessedMongo)
-	helper.calculateRatio('_id', urlWithoutQuery, 'metric_method', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_geo', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_agent', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_time', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_day', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_ext', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_request', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_status', ProcessedMongo)
+	helper.calculateRatio('_id', keyValue, 'metric_method', ProcessedMongo)
 
 
 	#### Remove from queue ###
@@ -225,8 +224,6 @@ def anomaly_IpStatic(requestRecord):
 ##################
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
-	print profileRecord
-	print requestRecord
 	""" Detect to many connections """
 	diff = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
 	print '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
@@ -336,7 +333,14 @@ if __name__ == '__main__':
 	while True:
 		for packet in StreamMongoDB.find():
 			print 'Started processing'
-			processRequest(packet, helper.getUrlWithoutQuery(packet['url']))
-			processRequest(packet, packet['ip'])
+
+
+			## User filtering
+			processRequest(packet, packet['ip'], helper.getUrlWithoutQuery(packet['url']))
+
+			## App filtering
+			processRequest(packet, helper.getUrlWithoutQuery(packet['url']), packet['ip'])
+
+
 			# startAnomalyDetection(packet)
 			print '-----------------'
