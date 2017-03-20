@@ -1,12 +1,12 @@
 import calendar
-import datetime, IP2Location
+import helper
+import datetime
 from pymongo import MongoClient
 from record import Record
-from lastAdded import LastAdded
 
 
 ProcessedMongo = MongoClient().Firewall.processed
-# StreamMongoDB = MongoClient().Firewall.TestStream
+StreamMongoDB = MongoClient().Firewall.TestStream
 ProfileMongoDB = MongoClient().profile_app.test
 ProfileMongoDB = MongoClient().profile_user.test
 
@@ -14,8 +14,6 @@ IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 BotMongoDB = MongoClient().config_static.profile_bots
 
 
-
-tmpLastObj = LastAdded()
 
 threshold_ratio = 0.1
 threshold_counter = 5
@@ -26,126 +24,102 @@ threshold_counter = 5
 #### HELPERS ####
 #################
 
-def GeoLocate(ip):
-	""" Method for translating ip-address to geolocation (country) """
-	try:
-		IP2LocObj = IP2Location.IP2Location();
-		IP2LocObj.open('../2. Profiler/sources/IP2GEODB.BIN');
-		return IP2LocObj.get_all(ip).country_long;
-	except Exception as e:
-		print e
-		return 'Geolocation failed'
+def processRequest(inputRequest, keyValue):
+	""" Assign workers with workload """
 
-
-def calculateRatio(url, metric):
-	""" Method for calculating the ratio for a given metric """
-
-	currRecord = ProcessedMongo.find_one({'url': url })
-
-	#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
-	for metricEntry in currRecord[metric]:
-		if metricEntry is not '' or metricEntry is not None:
-			ProcessedMongo.update({'url': url}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['totalConnections'])}})
-
-
-def processRequest(request):
-	#### Local variable declaration ####
-	urlWithoutPoints = request['requestUrl'].replace('.', '_')
-	timestamp = datetime.datetime.strptime( request['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
-	userAgent_Replaced = request['uagent'].replace('.', '_')
-
+	global activeWorkers
 
 	#### Ending conditions ####
-	if request is None:
+	if inputRequest is None:
 		return
 
-	#### Split querystring into params ####
-	if '?' in request['url']:
-		urlWithoutQuery = request['url'].split('?')[0]
-		queryString = request['url'].split('?')[1].split('&')
-	else:
-		urlWithoutQuery = request['url']
-		queryString = ''
-	queryString = [element.replace('.', '_') for element in queryString]
-
-
-
-	#### Determine file extension ####
-	try:
-		filetype = request['requestUrl'].split('.')[1].split('?')[0]
-	except Exception:
-		try:
-			filetype = request['requestUrl'].split('.')[1]
-		except Exception:
-			filetype = 'url'
+	timestamp = datetime.datetime.strptime(inputRequest['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+	urlWithoutQuery = helper.getUrlWithoutQuery(inputRequest['url'])
+	queryString = [element.replace('.', '_') for element in helper.getQueryString(inputRequest['url'])]
 
 
 	#### Add document on first occurance  ####
-	if ProcessedMongo.find({'url': urlWithoutQuery}).count() == 0:
-		ProcessedMongo.insert_one((Record(request['method'], urlWithoutQuery)).__dict__)
+	if ProcessedMongo.find({'_id': keyValue}).count() == 0:
+		ProcessedMongo.insert_one({'_id': keyValue})
 
 
 	#### Batch update all metrics ####
-	bulk = ProcessedMongo.initialize_unordered_bulk_op()
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'totalConnections': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + GeoLocate(request['ip']) + '.counter': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': request['uagent']}).count() == 0 else 'Bot' }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
+	bulk = ProcessedMongo.initialize_ordered_bulk_op()
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'general_totalConnections': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputRequest['ip']}})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_agent.' + inputRequest['uagent'].replace('.', '_') + '.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$set': { 'metric_agent.' + inputRequest['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputRequest['uagent']}).count() == 0 else 'Bot' }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_request.' + inputRequest['requestUrl'].replace('.', '_') + '.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputRequest['requestUrl']) +'.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_status.' + inputRequest['code'] +'.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_method.' + inputRequest['method'] +'.counter': 1 }})
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputRequest['ip'], True) + '.counter': 1 }})
 
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + request['code'] +'.counter': 1 }})
-	bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + request['method'] +'.counter': 1 }})
+	## INVESTIGATE ####
+	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_conn.' + inputRequest['ip'].replace('.', '_') + '.counter': 1 }})
 
 
 	#### Add querystring param ####
 	if len(queryString) > 0:
 		for param in queryString:
-			bulk.find({"url": urlWithoutQuery }).update({'$inc': {'metric_param.' + param + '.counter': 1}})
+			if len(param.split('=')) == 2:
+				pKey = param.split('=')[0]
+				pValue = '-' if not param.split('=')[1] else param.split('=')[1]
+
+
+				#### Determine type of param ####
+				try:
+					int(pValue)
+					paramType = 'int'
+				except ValueError:
+					paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
+				except Exception:
+					print param
+
+
+				#### Detecting special chars in param ####
+				chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
+
+
+				#### Add to bulk updates ####
+				bulk.find({'_id': keyValue }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+				bulk.find({'_id': keyValue }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+				bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+				bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
 
 	#### Execute batch ####
 	try:
 		bulk.execute()
-	except Exception as bwe:
-		print(bwe.details)
+	except Exception:
+		pass
+
+	#### Setup timeline ####
+	helper.makeTimeline(ProcessedMongo,  keyValue, keyValue.replace('.', '_'))
+
 
 
 	#### Calculate ratio for metrics ####
-	calculateRatio(urlWithoutQuery, 'metric_geo')
-	calculateRatio(urlWithoutQuery, 'metric_agent')
-	calculateRatio(urlWithoutQuery, 'metric_time')
-	calculateRatio(urlWithoutQuery, 'metric_day')
-	calculateRatio(urlWithoutQuery, 'metric_ext')
-	calculateRatio(urlWithoutQuery, 'metric_request')
-	calculateRatio(urlWithoutQuery, 'metric_status')
-	calculateRatio(urlWithoutQuery, 'metric_method')
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_geo', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_agent', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_time', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_day', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_ext', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_request', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_status', ProcessedMongo)
+	helper.calculateRatio('_id', urlWithoutQuery, 'metric_method', ProcessedMongo)
 
 
-
-	if len(queryString) > 0:
-		for param in queryString:
-			calculateRatio(urlWithoutQuery, 'metric_param', param)
-			tmpLastObj.addParam(param)
-
-
-	#### Create last added object ####
-	tmpLastObj.location = GeoLocate(request['ip'])
-	tmpLastObj.time = request['fulltime']
-	tmpLastObj.agent = userAgent_Replaced
-	tmpLastObj.ext = filetype
-	tmpLastObj.request = urlWithoutPoints
-
-
-	#### Delete packet from stream ####
-
-	#### REFACTORED SOME THINGS CHECK LATER IF STILL WORKS!!!
+	#### Remove from queue ###
 	try:
-		StreamMongoDB.delete_one({'_id': request['_id']})
+		StreamMongoDB.delete_one({'_id': inputRequest['_id']})
 	except Exception:
 		print 'Delete failed'
+
+
+
 
 
 
@@ -186,7 +160,6 @@ def anomaly_GeoUnknown(profileRecord, requestRecord):
 	else:
 		print '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj.location)
 
-
 def anomaly_TimeUnknown(profileRecord, requestRecord):
 	""" Detect unknowns in time metric """
 
@@ -195,7 +168,6 @@ def anomaly_TimeUnknown(profileRecord, requestRecord):
 		anomaly_TimeRatio(profileRecord, requestRecord)
 	else:
 		print '[ALERT] Connection at unfamiliar time ({})'.format(tmpLastObj.time)
-
 
 def anomaly_AgentUnknown(profileRecord, requestRecord):
 	""" Detect unknowns in agent metric """
@@ -206,7 +178,6 @@ def anomaly_AgentUnknown(profileRecord, requestRecord):
 	else:
 		print '[ALERT] Connection with unfamiliar user agent ({})'.format(tmpLastObj.agent)
 
-
 def anomaly_ExtUnknown(profileRecord, requestRecord):
 	""" Detect unknowns in file extension metric """
 
@@ -216,7 +187,6 @@ def anomaly_ExtUnknown(profileRecord, requestRecord):
 	else:
 		print '[ALERT] Request for unusual file type ({})'.format(tmpLastObj.ext)
 
-
 def anomaly_RequestUnknown(profileRecord, requestRecord):
 	""" Detect unknowns in request metric """
 
@@ -225,7 +195,6 @@ def anomaly_RequestUnknown(profileRecord, requestRecord):
 		anomaly_RequestRatio(profileRecord, requestRecord)
 	else:
 		print '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj.request)
-
 
 def anomaly_ParamUnknown(profileRecord, requestRecord):
 	""" Detect unknowns in parameter metric """
@@ -248,7 +217,7 @@ def anomaly_ParamUnknown(profileRecord, requestRecord):
 #### only for user profiling ####
 def anomaly_IpStatic(requestRecord):
 	pass
-# 	print '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1 else '[OK] IP not blacklisted'
+	# print '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1 else '[OK] IP not blacklisted'
 
 
 ##################
@@ -367,6 +336,7 @@ if __name__ == '__main__':
 	while True:
 		for packet in StreamMongoDB.find():
 			print 'Started processing'
-			processRequest(packet)
-			startAnomalyDetection(packet)
+			processRequest(packet, helper.getUrlWithoutQuery(packet['url']))
+			processRequest(packet, packet['ip'])
+			# startAnomalyDetection(packet)
 			print '-----------------'

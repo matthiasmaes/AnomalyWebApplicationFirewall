@@ -115,16 +115,16 @@ def processLine(start, index):
 					bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
 
+
 		#### Execute batch ####
 		try:
 			bulk.execute()
 		except Exception:
 			pass
 
+
 		#### Setup timeline ####
 		helper.makeTimeline(OutputMongoDB,  urlWithoutQuery, inputLine['ip'].replace('.', '_'))
-
-
 
 		#### Calculate ratio for metrics ####
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_geo', OutputMongoDB)
@@ -136,23 +136,6 @@ def processLine(start, index):
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_status', OutputMongoDB)
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_method', OutputMongoDB)
 
-
-		if len(queryString) > 0:
-			for param in queryString:
-				if len(param.split('=')) == 2:
-
-					pKey = param.split('=')[0]
-					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
-
-					helper.calculateRatioParam('_id', urlWithoutQuery, pKey, OutputMongoDB)
-
-					try:
-						orgAvg = OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_param'][pKey]
-						newAvg = orgAvg['length'] + ((len(pValue) - orgAvg['length']) / orgAvg['counter'])
-					except KeyError:
-						newAvg = len(pValue)
-					finally:
-						OutputMongoDB.update_one({'_id': urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
 
 		#### Update progress ####
 		converted += 1
