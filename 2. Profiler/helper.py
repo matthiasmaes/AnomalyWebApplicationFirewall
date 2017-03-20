@@ -22,14 +22,26 @@ def GeoLocate(ip, ping):
 			return "Domain translation disabled"
 
 
-def calculateRatio(identifier, ip, metric, mongo):
+def calculateRatio(identifier, value, metric, mongo):
 	""" Method for calculating the ratio for a given metric """
 
-	currRecord = mongo.find_one({identifier: ip })
+	currRecord = mongo.find_one({identifier: value })
 	for metricEntry in currRecord[metric]:
 		if metricEntry is not '' or metricEntry is not None:
-			mongo.update({identifier: ip}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
+			mongo.update({identifier: value}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
+
+def calculateRatioParam(identifier, value, pKey, mongo):
+	""" Method for calculating the ratio for a given metric """
+
+	currRecord = mongo.find_one({identifier: value })
+	for param in currRecord['metric_param'][pKey]:
+		try:
+			#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
+			mongo.update({identifier: value}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
+		except TypeError:
+			#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
+			pass
 
 def getQueryString(inputLine):
 	return inputLine.split('?')[1].split('&') if '?' in inputLine else ''
@@ -50,7 +62,3 @@ def setupParser():
 	parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 	parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 	return parser.parse_args()
-
-
-
-

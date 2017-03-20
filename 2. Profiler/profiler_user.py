@@ -65,8 +65,6 @@ def processLine(start, index):
 
 		#### Replace points in url to prevent confict in mongoDB datastructure ####
 		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
-		userAgent_Replaced = inputLine['uagent'].replace('.', '_')
-		requestUrl_Replaced = inputLine['requestUrl'].replace('.', '_')
 		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
 		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
 
@@ -81,9 +79,9 @@ def processLine(start, index):
 
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'general_totalConnections': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
-		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + requestUrl_Replaced + '.counter': 1 }})
-		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
-		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})

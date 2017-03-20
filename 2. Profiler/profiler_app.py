@@ -41,21 +41,6 @@ progressBarObj.start()
 
 
 
-def calculateRatioParam(url, pKey):
-	""" Method for calculating the ratio for a given metric """
-
-	currRecord = OutputMongoDB.find_one({'url': url })
-
-	for param in currRecord['metric_param'][pKey]:
-		try:
-			#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
-			OutputMongoDB.update({'url': url}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
-		except TypeError:
-			#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
-			pass
-
-
-
 def processLine(start, index):
 	""" Assign workers with workload """
 
@@ -73,13 +58,9 @@ def processLine(start, index):
 		else:
 			progressBarObj.update(converted)
 
-
-		urlWithoutPoints = inputLine['requestUrl'].replace('.', '_')
 		timestamp = datetime.datetime.strptime( inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
 		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url'])
 		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
-		userAgent_Replaced = inputLine['uagent'].replace('.', '_')
-
 
 		#### Determine file extension ####
 		try:
@@ -102,9 +83,9 @@ def processLine(start, index):
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + userAgent_Replaced + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + userAgent_Replaced + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + urlWithoutPoints + '.counter': 1 }})
+		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
@@ -166,7 +147,7 @@ def processLine(start, index):
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
 
-					calculateRatioParam(urlWithoutQuery, pKey)
+					helper.calculateRatioParam('url', urlWithoutQuery, pKey, OutputMongoDB)
 
 					try:
 						orgAvg = OutputMongoDB.find_one({'url': urlWithoutQuery})['metric_param'][pKey]
