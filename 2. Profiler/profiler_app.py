@@ -73,15 +73,17 @@ def processLine(start, index):
 		#### Batch update all metrics ####
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
 
 
 		#### Add querystring param ####
@@ -118,6 +120,10 @@ def processLine(start, index):
 			bulk.execute()
 		except Exception:
 			pass
+
+		#### Setup timeline ####
+		helper.makeTimeline(OutputMongoDB,  urlWithoutQuery, inputLine['ip'].replace('.', '_'))
+
 
 
 		#### Calculate ratio for metrics ####

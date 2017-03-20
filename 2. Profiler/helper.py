@@ -53,6 +53,7 @@ def getQueryString(inputLine):
 def getUrlWithoutQuery(inputLine):
 	return inputLine.split('?')[0] if '?' in str(inputLine) else inputLine
 
+
 def getFileType(inputLine):
 	try:
 		filetype = inputLine.split('.')[1].split('?')[0]
@@ -64,7 +65,7 @@ def getFileType(inputLine):
 	return filetype
 
 
-def makeTimeline(mongo, inputLine, url):
+def makeTimeline(mongo, inputLine, value):
 	timelineDict = mongo.find_one({'_id' : inputLine})['general_timeline']
 	timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
@@ -79,14 +80,14 @@ def makeTimeline(mongo, inputLine, url):
 		delta = time2 - time1
 
 		if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
-			counter = mongo.find_one({ '_id' : inputLine })['metric_url'][url]['counter']
+			counter = mongo.find_one({ '_id' : inputLine })['metric_conn'][value]['counter']
 			try:
-				orgAvg = mongo.find_one({ '_id' : inputLine })['metric_timespent'][url]
+				orgAvg = mongo.find_one({ '_id' : inputLine })['metric_timespent'][value]
 				newAvg = orgAvg + ((delta.total_seconds() - orgAvg) / counter)
 			except KeyError:
 				newAvg = delta.total_seconds()
 			finally:
-				mongo.update_one({ '_id' : inputLine }, { '$set' : {'metric_timespent.' + url : int(newAvg)}})
+				mongo.update_one({ '_id' : inputLine }, { '$set' : {'metric_timespent.' + value : int(newAvg)}})
 
 
 def setupParser():
