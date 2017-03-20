@@ -4,21 +4,16 @@ import datetime
 from pymongo import MongoClient
 from record import Record
 
-
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
-ProfileMongoDB = MongoClient().profile_app.test
-ProfileMongoDB = MongoClient().profile_user.test
+ProfileAppMongoDB = MongoClient().profile_app['profile_app_11:35:52']
+ProfileUserMongoDB = MongoClient().profile_user.test
 
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 BotMongoDB = MongoClient().config_static.profile_bots
 
-
-
 threshold_ratio = 0.1
 threshold_counter = 5
-
-
 
 #################
 #### HELPERS ####
@@ -128,11 +123,11 @@ def processRequest(inputRequest, keyValue, otherkeyValue):
 #### ANOMALY DETECTION ####
 ###########################
 
-def startAnomalyDetection(packet):
+def startAnomalyDetection(packet, profileRecord):
 	""" Start anomaly detection process """
 
-	profileRecord = ProfileMongoDB.find_one({'url': packet['url']})
-	requestRecord = ProcessedMongo.find_one({'url': packet['url']})
+
+	requestRecord = ProcessedMongo.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])})
 
 	anomaly_TotalConnections(profileRecord, requestRecord)
 	anomaly_GeoUnknown(profileRecord, requestRecord)
@@ -225,7 +220,8 @@ def anomaly_IpStatic(requestRecord):
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
-	diff = int(requestRecord['totalConnections']) - int(profileRecord['totalConnections'])
+	print requestRecord
+	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
 	print '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
 
 def anomaly_GeoCounter (profileRecord, requestRecord):
@@ -280,42 +276,35 @@ def anomaly_GeoRatio(profileRecord, requestRecord):
 	diff = float(requestRecord['metric_geo'][tmpLastObj.location]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj.location]['ratio'])
 	print '[OK] Ratio geolocation safe ({} | {})'.format(diff, tmpLastObj.location) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diff, tmpLastObj.location)
 
-
 def anomaly_TimeRatio(profileRecord, requestRecord):
 	""" Detect divergent time ratio """
 	diff = float(requestRecord['metric_time'][tmpLastObj.time]['ratio']) - float(profileRecord['metric_time'][tmpLastObj.time]['ratio'])
 	print '[OK] Ratio time safe ({} | {}h)'.format(diff, tmpLastObj.time) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diff, tmpLastObj.time)
-
 
 def anomaly_AgentRatio(profileRecord, requestRecord):
 	""" Detect divergent agent ratio """
 	diff = float(requestRecord['metric_agent'][tmpLastObj.agent]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj.agent]['ratio'])
 	print '[OK] Ratio user agent safe ({} | {})'.format(diff, tmpLastObj.agent) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diff, tmpLastObj.agent)
 
-
 def anomaly_ExtRatio(profileRecord, requestRecord):
 	""" Detect divergent file type ratio """
 	diff = float(requestRecord['metric_ext'][tmpLastObj.ext]['ratio']) - float(profileRecord['metric_ext'][tmpLastObj.ext]['ratio'])
 	print '[OK] Ratio file extension safe ({} | {})'.format(diff, tmpLastObj.ext) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diff, tmpLastObj.ext)
-
 
 def anomaly_RequestRatio(profileRecord, requestRecord):
 	""" Detect divergent request ratio """
 	diff = float(requestRecord['metric_request'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_request'][tmpLastObj.request]['ratio'])
 	print '[OK] Ratio resource requests safe ({} | {})'.format(diff, tmpLastObj.request) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, tmpLastObj.request)
 
-
 def anomaly_StatusRatio(profileRecord, requestRecord):
 	""" Detect divergent request ratio """
 	diff = float(requestRecord['metric_status'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_status'][tmpLastObj.request]['ratio'])
 	print '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj.request) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj.request)
 
-
 def anomaly_MethodRatio(profileRecord, requestRecord):
 	""" Detect divergent request ratio """
 	diff = float(requestRecord['metric_method'][tmpLastObj.request]['ratio']) - float(profileRecord['metric_method'][tmpLastObj.request]['ratio'])
 	print '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj.request) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj.request)
-
 
 def anomaly_ParamRatio(profileRecord, requestRecord):
 	""" Detect divergent param ratio """
@@ -342,5 +331,8 @@ if __name__ == '__main__':
 			processRequest(packet, helper.getUrlWithoutQuery(packet['url']), packet['ip'])
 
 
-			# startAnomalyDetection(packet)
+
+
+			startAnomalyDetection(packet, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])}))
+
 			print '-----------------'

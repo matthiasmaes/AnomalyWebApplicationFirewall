@@ -46,6 +46,7 @@ def calculateRatioParam(identifier, value, pKey, mongo):
 			#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
 			pass
 
+
 def getQueryString(inputLine):
 	return inputLine.split('?')[1].split('&') if '?' in str(inputLine) else ''
 
