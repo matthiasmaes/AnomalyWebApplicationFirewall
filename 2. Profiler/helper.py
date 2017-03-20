@@ -50,11 +50,20 @@ def getQueryString(inputLine):
 def getUrlWithoutQuery(inputLine):
 	return inputLine.split('?')[0] if '?' in inputLine else inputLine
 
+def getFileType(inputLine):
+	try:
+		filetype = inputLine.split('.')[1].split('?')[0]
+	except Exception:
+		try:
+			filetype = inputLine.split('.')[1]
+		except Exception:
+			filetype = 'url'
+	return filetype
+
 
 def setupParser():
 	parser = OptionParser()
 	parser.add_option("-p", "--ping", action="store_true", dest="ping", default=True, help="Try to resolve originating domains to ip for geolocation")
-	parser.add_option("-b", "--bot", action="store_true", dest="bot", default=False, help="Filter search engine bots")
 	parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 	parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
 	parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
@@ -62,3 +71,4 @@ def setupParser():
 	parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 	parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 	return parser.parse_args()
+

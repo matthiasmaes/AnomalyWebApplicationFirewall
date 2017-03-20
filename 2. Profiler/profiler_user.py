@@ -15,7 +15,7 @@ from record_user import Record_User
 
 
 #### Init global vars ####
-initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
+initTime = str('%02d' % datetime.datetime.now().hour) + ':' +  str('%02d' % datetime.datetime.now().minute) + ':' +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
 
@@ -78,15 +78,17 @@ def processLine(start, index):
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_url.' + urlWithoutQuery + '.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
 		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
+		bulk.find({ 'general_ip': inputLine['ip'] }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
+
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -154,6 +156,7 @@ def processLine(start, index):
 		helper.calculateRatio('general_ip', inputLine['ip'], 'metric_request', OutputMongoDB)
 		helper.calculateRatio('general_ip', inputLine['ip'], 'metric_status', OutputMongoDB)
 		helper.calculateRatio('general_ip', inputLine['ip'], 'metric_method', OutputMongoDB)
+		helper.calculateRatio('general_ip', inputLine['ip'], 'metric_ext', OutputMongoDB)
 
 
 		#### Update progress ####
@@ -163,9 +166,9 @@ def processLine(start, index):
 	activeWorkers -= 1
 
 	if options.debug:
-		print "[DEBUG] Worker started:"
-		print "[DEBUG] Active workers: {}".format(activeWorkers)
-		print "[DEBUG] Lines processed: {}".format(index)
+		print '[DEBUG] Worker started:'
+		print '[DEBUG] Active workers: {}'.format(activeWorkers)
+		print '[DEBUG] Lines processed: {}'.format(index)
 		print '[DEBUG] Lines / seconds: {}'.format(index / ((datetime.datetime.now() - startTime).total_seconds()))
 
 
@@ -199,6 +202,6 @@ for thread in threads:
 progressBarObj.finish()
 
 #### Print statistics ####
-print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))
-print("Average lines per second: {} l/s".format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
+print('Total execution time: {} seconds'.format((datetime.datetime.now() - startTime).total_seconds()))
+print('Average lines per second: {} l/s'.format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
 # TODO: More statistics

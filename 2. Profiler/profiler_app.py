@@ -11,7 +11,7 @@ from record_app import Record_App
 
 
 #### Init global vars ####
-initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
+initTime = str('%02d' % datetime.datetime.now().hour) + ':' +  str('%02d' % datetime.datetime.now().minute) + ':' +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
 
@@ -62,15 +62,6 @@ def processLine(start, index):
 		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url'])
 		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
 
-		#### Determine file extension ####
-		try:
-			filetype = inputLine['requestUrl'].split('.')[1].split('?')[0]
-		except Exception:
-			try:
-				filetype = inputLine['requestUrl'].split('.')[1]
-			except Exception:
-				filetype = 'url'
-
 
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
@@ -86,10 +77,9 @@ def processLine(start, index):
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + filetype +'.counter': 1 }})
+		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
 		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
-
 
 
 		#### Add querystring param ####
@@ -157,7 +147,6 @@ def processLine(start, index):
 					finally:
 						OutputMongoDB.update_one({'url': urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
 
-
 		#### Update progress ####
 		converted += 1
 
@@ -165,9 +154,9 @@ def processLine(start, index):
 	activeWorkers -= 1
 
 	if options.debug:
-		print "[DEBUG] Worker started:"
-		print "[DEBUG] Active workers: {}".format(activeWorkers)
-		print "[DEBUG] Lines processed: {}".format(index)
+		print '[DEBUG] Worker started:'
+		print '[DEBUG] Active workers: {}'.format(activeWorkers)
+		print '[DEBUG] Lines processed: {}'.format(index)
 		print '[DEBUG] Lines / seconds: {}'.format(index / ((datetime.datetime.now() - startTime).total_seconds()))
 
 
@@ -201,8 +190,7 @@ for thread in threads:
 progressBarObj.finish()
 
 
-
 #### Print statistics ####
-print("Total execution time: {} seconds".format((datetime.datetime.now() - startTime).total_seconds()))
-print("Average lines per second: {} l/s".format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
+print('Total execution time: {} seconds'.format((datetime.datetime.now() - startTime).total_seconds()))
+print('Average lines per second: {} l/s'.format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
 # TODO: More statistics
