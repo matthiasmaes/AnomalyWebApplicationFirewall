@@ -27,7 +27,7 @@ BotMongoDB = MongoClient().config_static.profile_bots
 
 
 #### Place index on url field to speed up searches through db ####
-OutputMongoDB.create_index('url', background=True)
+# OutputMongoDB.create_index('_id', background=True)
 
 
 #### Determening lines to process####
@@ -58,34 +58,35 @@ def processLine(start, index):
 		else:
 			progressBarObj.update(converted)
 
-		timestamp = datetime.datetime.strptime( inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+
+		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
 		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url'])
 		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
 
 
 		#### Add document on first occurance  ####
-		if OutputMongoDB.find({'url': urlWithoutQuery}).count() == 0:
-			OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
+		if OutputMongoDB.find({'_id': urlWithoutQuery}).count() == 0:
+			# OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
+			OutputMongoDB.insert_one({'_id': urlWithoutQuery})
 
 
 		#### Batch update all metrics ####
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
-		bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
 
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
 			for param in queryString:
-
 				if len(param.split('=')) == 2:
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
@@ -106,10 +107,10 @@ def processLine(start, index):
 
 
 					#### Add to bulk updates ####
-					bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({'url': urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
-					bulk.find({'url': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
+					bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
 
 		#### Execute batch ####
@@ -120,14 +121,14 @@ def processLine(start, index):
 
 
 		#### Calculate ratio for metrics ####
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_geo', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_agent', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_time', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_day', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_ext', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_request', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_status', OutputMongoDB)
-		helper.calculateRatio('url', urlWithoutQuery, 'metric_method', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_geo', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_agent', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_time', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_day', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_ext', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_request', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_status', OutputMongoDB)
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_method', OutputMongoDB)
 
 
 		if len(queryString) > 0:
@@ -137,15 +138,15 @@ def processLine(start, index):
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
 
-					helper.calculateRatioParam('url', urlWithoutQuery, pKey, OutputMongoDB)
+					helper.calculateRatioParam('_id', urlWithoutQuery, pKey, OutputMongoDB)
 
 					try:
-						orgAvg = OutputMongoDB.find_one({'url': urlWithoutQuery})['metric_param'][pKey]
+						orgAvg = OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_param'][pKey]
 						newAvg = orgAvg['length'] + ((len(pValue) - orgAvg['length']) / orgAvg['counter'])
 					except KeyError:
 						newAvg = len(pValue)
 					finally:
-						OutputMongoDB.update_one({'url': urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
+						OutputMongoDB.update_one({'_id': urlWithoutQuery} , {'$set': { 'metric_param.' + pKey + '.length': newAvg}})
 
 		#### Update progress ####
 		converted += 1

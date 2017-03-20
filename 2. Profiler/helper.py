@@ -1,6 +1,9 @@
 import IP2Location
 import dns.resolver
 import string
+import datetime
+
+from collections import OrderedDict
 from optparse import OptionParser
 
 
@@ -44,11 +47,11 @@ def calculateRatioParam(identifier, value, pKey, mongo):
 			pass
 
 def getQueryString(inputLine):
-	return inputLine.split('?')[1].split('&') if '?' in inputLine else ''
+	return inputLine.split('?')[1].split('&') if '?' in str(inputLine) else ''
 
 
 def getUrlWithoutQuery(inputLine):
-	return inputLine.split('?')[0] if '?' in inputLine else inputLine
+	return inputLine.split('?')[0] if '?' in str(inputLine) else inputLine
 
 def getFileType(inputLine):
 	try:
@@ -61,6 +64,31 @@ def getFileType(inputLine):
 	return filetype
 
 
+def makeTimeline(mongo, inputLine, url):
+	timelineDict = mongo.find_one({'_id' : inputLine})['general_timeline']
+	timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
+
+	for event in timelineList:
+		#### Calculate avg time spent for each base url ####
+		if timelineList.index(event) == len(timelineList) - 1:
+			break
+
+		time1 = datetime.datetime.strptime(event[0], '%d/%b/%Y %H:%M:%S')
+		time2 = datetime.datetime.strptime(timelineList[timelineList.index(event)+1][0], '%d/%b/%Y %H:%M:%S')
+
+		delta = time2 - time1
+
+		if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
+			counter = mongo.find_one({ '_id' : inputLine })['metric_url'][url]['counter']
+			try:
+				orgAvg = mongo.find_one({ '_id' : inputLine })['metric_timespent'][url]
+				newAvg = orgAvg + ((delta.total_seconds() - orgAvg) / counter)
+			except KeyError:
+				newAvg = delta.total_seconds()
+			finally:
+				mongo.update_one({ '_id' : inputLine }, { '$set' : {'metric_timespent.' + url : int(newAvg)}})
+
+
 def setupParser():
 	parser = OptionParser()
 	parser.add_option("-p", "--ping", action="store_true", dest="ping", default=True, help="Try to resolve originating domains to ip for geolocation")
@@ -71,4 +99,3 @@ def setupParser():
 	parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 	parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 	return parser.parse_args()
-
