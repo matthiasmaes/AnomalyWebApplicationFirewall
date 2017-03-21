@@ -1,0 +1,74 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+
+	<title>WebConsole</title>
+	<meta name="description" content="WebConsole">
+	<meta name="author" content="MatthiasMaes">
+
+	<link rel="stylesheet" href="css/material.css">
+
+</head>
+
+<body>
+	<ul id="msgList">
+	</ul>
+
+
+	<!-- Wide card with share menu button -->
+	<style>
+		.demo-card-wide.mdl-card {
+			width: 75%;
+			margin: 2.5rem auto;
+		}
+
+		.demo-card-wide > .mdl-card__title {
+			color: #1C1C1C;
+			background-color: #FF9800;
+		}
+
+	</style>
+
+
+	<script src="jquery-3.2.0.min.js"></script>
+	<script type="text/javascript">
+		$finalResult = {}
+		$colors = ['#9C27B0', '#009688', '#FF9800', '#607D8B']
+
+		oldColor = '0'
+
+		window.setInterval(function(){
+			$.ajax({url: 'api.php', dataType: "json", success: function(result){
+				$(result).each(function(index){
+
+					if (!($(this)[0]['_id']['$id'] in $finalResult)) {
+						$finalResult[$(this)[0]['_id']['$id']] = $(this)[0]['message']
+						$('body').hide().prepend('<div class="demo-card-wide mdl-card mdl-shadow--2dp"><div class="mdl-card__title" style="background-color: ' + $colors[oldColor] + '"><h2 class="mdl-card__title-text">ALERT</h2></div><div class="mdl-card__supporting-text">'+$(this)[0]['message']+'</div></div>'
+							).fadeIn("slow");
+
+					}
+				});
+			}});
+
+
+
+			newColor = Math.floor(Math.random() * 3)
+			console.log('***')
+			console.log(oldColor)
+			console.log(newColor)
+			console.log('---')
+			while (newColor == oldColor) {
+				newColor = Math.floor(Math.random() * 3)
+			}
+			console.log(oldColor)
+			console.log(newColor)
+			console.log('---')
+			oldColor = newColor
+
+		}, 1000);
+
+	</script>
+</body>
+</html>
