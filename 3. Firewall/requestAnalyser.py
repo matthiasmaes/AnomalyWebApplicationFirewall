@@ -8,6 +8,7 @@ ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
 ProfileAppMongoDB = MongoClient().profile_app['profile_app_11:35:52']
 ProfileUserMongoDB = MongoClient().profile_user['profile_user_10:52:35']
+MessageMongoDB = MongoClient().engine_log.firewall_messages
 
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 BotMongoDB = MongoClient().config_static.profile_bots
@@ -180,7 +181,8 @@ def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
 			anomaly_GeoCounter(profileRecord, requestRecord, tmpLastObj)
 			anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj)
 		else:
-			print '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj['location'])
+			result = '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj['location'])
+			if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in time metric """
@@ -189,7 +191,8 @@ def anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_TimeCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_TimeRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		print '[ALERT] Connection at unfamiliar time ({})'.format(tmpLastObj['time'])
+		result = '[ALERT] Connection at unfamiliar time ({})'.format(tmpLastObj['time'])
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in agent metric """
@@ -198,7 +201,8 @@ def anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_AgentCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_AgentRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		print '[ALERT] Connection with unfamiliar user agent ({})'.format(tmpLastObj['agent'])
+		result = '[ALERT] Connection with unfamiliar user agent ({})'.format(tmpLastObj['agent'])
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in file extension metric """
@@ -207,7 +211,8 @@ def anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_ExtCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_ExtRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		print '[ALERT] Request for unusual file type ({})'.format(tmpLastObj['ext'])
+		result = '[ALERT] Request for unusual file type ({})'.format(tmpLastObj['ext'])
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in request metric """
@@ -216,7 +221,8 @@ def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_RequestCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		print '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj['request'])
+		result = '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj['request'])
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in status metric """
@@ -225,7 +231,8 @@ def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_StatusCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		print '[ALERT] Unfamiliar status request ({})'.format(tmpLastObj['status'])
+		result = '[ALERT] Unfamiliar status request ({})'.format(tmpLastObj['status'])
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
@@ -235,7 +242,8 @@ def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_MethodCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		print '[ALERT] Unfamiliar method request ({})'.format(tmpLastObj['method'])
+		result = '[ALERT] Unfamiliar method request ({})'.format(tmpLastObj['method'])
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 
@@ -250,7 +258,8 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 			anomaly_ParamCounter(profileRecord, requestRecord, tmpLastObj)
 			anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj)
 		else:
-			print '[ALERT] Unfamiliar resource requested ({})'.format(param)
+			result = '[ALERT] Unfamiliar resource requested ({})'.format(param)
+			if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 #################
@@ -260,7 +269,8 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 #### only for user profiling ####
 def anomaly_IpStatic(requestRecord, tmpLastObj):
 	pass
-	# print '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1 else '[OK] IP not blacklisted'
+	# result = '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1 else '[OK] IP not blacklisted'
+	# if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 ##################
@@ -270,48 +280,57 @@ def anomaly_IpStatic(requestRecord, tmpLastObj):
 def anomaly_TotalConnections (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	print '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
+	result = '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_GeoCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections from specific country """
 	diff = int(requestRecord['metric_geo'][tmpLastObj['location']]['counter']) - int(profileRecord['metric_geo'][tmpLastObj['location']]['counter'])
-	print '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diff, tmpLastObj['location']) if threshold_counter < diff else '[OK] Connections from location safe ({} | {})'.format(diff, tmpLastObj['location'])
+	result = '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diff, tmpLastObj['location']) if threshold_counter < diff else '[OK] Connections from location safe ({} | {})'.format(diff, tmpLastObj['location'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_TimeCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections at specific time """
 	diff = int(requestRecord['metric_time'][tmpLastObj['time']]['counter']) - int(profileRecord['metric_time'][tmpLastObj['time']]['counter'])
-	print '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diff, tmpLastObj['time']) if threshold_counter < diff else '[OK] Connections at time safe ({} | {}h)'.format(diff, tmpLastObj['time'])
+	result = '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diff, tmpLastObj['time']) if threshold_counter < diff else '[OK] Connections at time safe ({} | {}h)'.format(diff, tmpLastObj['time'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_AgentCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections with specific agent """
 	diff = int(requestRecord['metric_agent'][tmpLastObj['agent']]['counter']) - int(profileRecord['metric_agent'][tmpLastObj['agent']]['counter'])
-	print '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diff, tmpLastObj['agent']) if threshold_counter < diff else '[OK] Connections from user agent safe ({} | {}h)'.format(diff, tmpLastObj['agent'])
+	result = '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diff, tmpLastObj['agent']) if threshold_counter < diff else '[OK] Connections from user agent safe ({} | {}h)'.format(diff, tmpLastObj['agent'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_ExtCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections to specific file types """
 	diff = int(requestRecord['metric_ext'][tmpLastObj['ext']]['counter']) - int(profileRecord['metric_ext'][tmpLastObj['ext']]['counter'])
-	print '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diff, tmpLastObj['ext']) if threshold_counter < diff else '[OK] Connections for filetype safe ({} | {})'.format(diff, tmpLastObj['ext'])
+	result = '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diff, tmpLastObj['ext']) if threshold_counter < diff else '[OK] Connections for filetype safe ({} | {})'.format(diff, tmpLastObj['ext'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_RequestCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections to specific resource file """
 	diff = int(requestRecord['metric_request'][tmpLastObj['request']]['counter']) - int(profileRecord['metric_request'][tmpLastObj['request']]['counter'])
-	print '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diff, tmpLastObj['request']) if threshold_counter < diff else '[OK] Requests for resource safe ({} | {})'.format(diff, tmpLastObj['request'])
+	result = '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diff, tmpLastObj['request']) if threshold_counter < diff else '[OK] Requests for resource safe ({} | {})'.format(diff, tmpLastObj['request'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_StatusCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections to specific resource file """
 	diff = int(requestRecord['metric_status'][tmpLastObj['status']]['counter']) - int(profileRecord['metric_status'][tmpLastObj['status']]['counter'])
-	print '[ALERT] More status than usual ({} | {})'.format(diff, tmpLastObj['status']) if threshold_counter < diff else '[OK] Status for resource safe ({} | {})'.format(diff, tmpLastObj['status'])
+	result = '[ALERT] More status than usual ({} | {})'.format(diff, tmpLastObj['status']) if threshold_counter < diff else '[OK] Status for resource safe ({} | {})'.format(diff, tmpLastObj['status'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_MethodCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections to specific resource file """
 	diff = int(requestRecord['metric_method'][tmpLastObj['method']]['counter']) - int(profileRecord['metric_method'][tmpLastObj['method']]['counter'])
-	print '[ALERT] More methods than usual ({} | {})'.format(diff, tmpLastObj['method']) if threshold_counter < diff else '[OK] Methods for resource safe ({} | {})'.format(diff, tmpLastObj['method'])
+	result = '[ALERT] More methods than usual ({} | {})'.format(diff, tmpLastObj['method']) if threshold_counter < diff else '[OK] Methods for resource safe ({} | {})'.format(diff, tmpLastObj['method'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_ParamCounter (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections on specific querystring parameter """
 	for param in tmpLastObj['param']:
 		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		print '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diff, param) if threshold_counter < diff else '[OK] Connections with parameter safe ({} | {})'.format(diff, param)
+		result = '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diff, param) if threshold_counter < diff else '[OK] Connections with parameter safe ({} | {})'.format(diff, param)
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 
@@ -322,43 +341,51 @@ def anomaly_ParamCounter (profileRecord, requestRecord, tmpLastObj):
 def anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent geolocation ratio """
 	diff = float(requestRecord['metric_geo'][tmpLastObj['location']]['ratio']) - float(profileRecord['metric_geo'][tmpLastObj['location']]['ratio'])
-	print '[OK] Ratio geolocation safe ({} | {})'.format(diff, tmpLastObj['location']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diff, tmpLastObj['location'])
+	result = '[OK] Ratio geolocation safe ({} | {})'.format(diff, tmpLastObj['location']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diff, tmpLastObj['location'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_TimeRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent time ratio """
 	diff = float(requestRecord['metric_time'][tmpLastObj['time']]['ratio']) - float(profileRecord['metric_time'][tmpLastObj['time']]['ratio'])
-	print '[OK] Ratio time safe ({} | {}h)'.format(diff, tmpLastObj['time']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diff, tmpLastObj['time'])
+	result = '[OK] Ratio time safe ({} | {}h)'.format(diff, tmpLastObj['time']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diff, tmpLastObj['time'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_AgentRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent agent ratio """
 	diff = float(requestRecord['metric_agent'][tmpLastObj['agent']]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj['agent']]['ratio'])
-	print '[OK] Ratio user agent safe ({} | {})'.format(diff, tmpLastObj['agent']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diff, tmpLastObj['agent'])
+	result = '[OK] Ratio user agent safe ({} | {})'.format(diff, tmpLastObj['agent']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diff, tmpLastObj['agent'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_ExtRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent file type ratio """
 	diff = float(requestRecord['metric_ext'][tmpLastObj['ext']]['ratio']) - float(profileRecord['metric_ext'][tmpLastObj['ext']]['ratio'])
-	print '[OK] Ratio file extension safe ({} | {})'.format(diff, tmpLastObj['ext']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diff, tmpLastObj['ext'])
+	result = '[OK] Ratio file extension safe ({} | {})'.format(diff, tmpLastObj['ext']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diff, tmpLastObj['ext'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent request ratio """
 	diff = float(requestRecord['metric_request'][tmpLastObj['request']]['ratio']) - float(profileRecord['metric_request'][tmpLastObj['request']]['ratio'])
-	print '[OK] Ratio resource requests safe ({} | {})'.format(diff, tmpLastObj['request']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, tmpLastObj['request'])
+	result = '[OK] Ratio resource requests safe ({} | {})'.format(diff, tmpLastObj['request']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, tmpLastObj['request'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent status ratio """
 	diff = float(requestRecord['metric_status'][tmpLastObj['status']]['ratio']) - float(profileRecord['metric_status'][tmpLastObj['status']]['ratio'])
-	print '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj['status']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj['status'])
+	result = '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj['status']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj['status'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent method ratio """
 	diff = float(requestRecord['metric_method'][tmpLastObj['method']]['ratio']) - float(profileRecord['metric_method'][tmpLastObj['method']]['ratio'])
-	print '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj['method']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj['method'])
+	result = '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj['method']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj['method'])
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 def anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent param ratio """
 	for param in tmpLastObj['param']:
 		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		print '[OK] Ratio resource requests safe ({} | {})'.format(diff, param) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, param)
+		result = '[OK] Ratio resource requests safe ({} | {})'.format(diff, param) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, param)
+		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 ##############
