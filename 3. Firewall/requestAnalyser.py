@@ -7,13 +7,19 @@ from record import Record
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
 ProfileAppMongoDB = MongoClient().profile_app['profile_app_11:35:52']
-ProfileUserMongoDB = MongoClient().profile_user.test
+ProfileUserMongoDB = MongoClient().profile_user['profile_user_10:52:35']
 
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 BotMongoDB = MongoClient().config_static.profile_bots
 
 threshold_ratio = 0.1
 threshold_counter = 5
+
+
+class TYPE:
+	USER, APP = range(2)
+
+
 
 #################
 #### HELPERS ####
@@ -121,7 +127,7 @@ def processRequest(inputRequest, keyValue, otherkeyValue):
 		'time': timestamp.strftime("%H"),
 		'agent': inputRequest['uagent'].replace('.', '_'),
 		'ext': helper.getFileType(inputRequest['requestUrl']),
-		'request': helper.getFileType(inputRequest['requestUrl']),
+		'request': inputRequest['requestUrl'].replace('.', '_'),
 		'status': inputRequest['code'],
 		'method': inputRequest['method'],
 		'param': queryString
@@ -136,19 +142,22 @@ def processRequest(inputRequest, keyValue, otherkeyValue):
 #### ANOMALY DETECTION ####
 ###########################
 
-def startAnomalyDetection(packet, profileRecord, tmpLastObj):
+def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	""" Start anomaly detection process """
 
 
 	requestRecord = ProcessedMongo.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])})
 
 	anomaly_TotalConnections(profileRecord, requestRecord, tmpLastObj)
-	anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj)
+	anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
 	anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
+
+	anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
+	anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
 
 	anomaly_IpStatic(requestRecord, tmpLastObj)
 
@@ -158,14 +167,20 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj):
 #### UNKNOWS ####
 #################
 
-def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj):
+def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
 	""" Detect unknowns in geo metric """
 
-	if tmpLastObj['location'] in profileRecord['metric_geo']:
-		anomaly_GeoCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj)
+	if typeProfile == TYPE.USER:
+		if tmpLastObj['location'] == profileRecord['general_location']:
+			print 'user ip ok'
+		else:
+			print 'ALARM GENERALE'
 	else:
-		print '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj['location'])
+		if tmpLastObj['location'] in profileRecord['metric_geo']:
+			anomaly_GeoCounter(profileRecord, requestRecord, tmpLastObj)
+			anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj)
+		else:
+			print '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj['location'])
 
 def anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in time metric """
@@ -202,6 +217,30 @@ def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
 		print '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj['request'])
+
+def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
+	""" Detect unknowns in status metric """
+
+	if tmpLastObj['status'] in profileRecord['metric_status']:
+		anomaly_StatusCounter(profileRecord, requestRecord, tmpLastObj)
+		anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj)
+	else:
+		print '[ALERT] Unfamiliar status request ({})'.format(tmpLastObj['status'])
+
+
+def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
+	""" Detect unknowns in method metric """
+
+	if tmpLastObj['method'] in profileRecord['metric_method']:
+		anomaly_MethodCounter(profileRecord, requestRecord, tmpLastObj)
+		anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj)
+	else:
+		print '[ALERT] Unfamiliar method request ({})'.format(tmpLastObj['method'])
+
+
+
+
+
 
 def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in parameter metric """
@@ -306,14 +345,14 @@ def anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj):
 	print '[OK] Ratio resource requests safe ({} | {})'.format(diff, tmpLastObj['request']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, tmpLastObj['request'])
 
 def anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent request ratio """
-	diff = float(requestRecord['metric_status'][tmpLastObj['request']]['ratio']) - float(profileRecord['metric_status'][tmpLastObj['request']]['ratio'])
-	print '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj['request']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj['request'])
+	""" Detect divergent status ratio """
+	diff = float(requestRecord['metric_status'][tmpLastObj['status']]['ratio']) - float(profileRecord['metric_status'][tmpLastObj['status']]['ratio'])
+	print '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj['status']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj['status'])
 
 def anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent request ratio """
-	diff = float(requestRecord['metric_method'][tmpLastObj['request']]['ratio']) - float(profileRecord['metric_method'][tmpLastObj['request']]['ratio'])
-	print '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj['request']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj['request'])
+	""" Detect divergent method ratio """
+	diff = float(requestRecord['metric_method'][tmpLastObj['method']]['ratio']) - float(profileRecord['metric_method'][tmpLastObj['method']]['ratio'])
+	print '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj['method']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj['method'])
 
 def anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent param ratio """
@@ -333,15 +372,20 @@ if __name__ == '__main__':
 			print 'Started processing'
 
 
-			## User filtering
-			tmpLastObj = processRequest(packet, packet['ip'], helper.getUrlWithoutQuery(packet['url']))
-
 			## App filtering
+			print '-----------'
+			print '--- APP ---'
+			print '-----------'
 			tmpLastObj = processRequest(packet, helper.getUrlWithoutQuery(packet['url']), packet['ip'])
+			startAnomalyDetection(packet, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])}), tmpLastObj, TYPE.APP)
 
 
+			## User filtering
+			print '------------'
+			print '--- User ---'
+			print '------------'
+			tmpLastObj = processRequest(packet, packet['ip'], helper.getUrlWithoutQuery(packet['url']))
+			startAnomalyDetection(packet, ProfileUserMongoDB.find_one({'_id': packet['ip']}), tmpLastObj, TYPE.USER)
 
-
-			startAnomalyDetection(packet, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])}), tmpLastObj)
 
 			print '-----------------'
