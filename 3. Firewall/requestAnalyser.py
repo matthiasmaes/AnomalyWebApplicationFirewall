@@ -160,8 +160,6 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
 
-	anomaly_IpStatic(requestRecord, tmpLastObj)
-
 
 
 #################
@@ -172,10 +170,10 @@ def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
 	""" Detect unknowns in geo metric """
 
 	if typeProfile == TYPE.USER:
-		if tmpLastObj['location'] == profileRecord['general_location']:
-			print 'user ip ok'
-		else:
-			print 'ALARM GENERALE'
+		# anomaly_IpStatic(requestRecord, tmpLastObj)
+
+		if tmpLastObj['location'] != profileRecord['general_location']:
+			result = '[ALARM] IP changed from location'
 	else:
 		if tmpLastObj['location'] in profileRecord['metric_geo']:
 			anomaly_GeoCounter(profileRecord, requestRecord, tmpLastObj)
@@ -268,9 +266,8 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 
 #### only for user profiling ####
 def anomaly_IpStatic(requestRecord, tmpLastObj):
-	pass
-	# result = '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'ip' : requestRecord['ip'] }).count >= 1 else '[OK] IP not blacklisted'
-	# if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+	result = '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'_id' : requestRecord['_id'] }).count >= 1 else '[OK] IP not blacklisted'
+	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 ##################
@@ -400,17 +397,11 @@ if __name__ == '__main__':
 
 
 			## App filtering
-			print '-----------'
-			print '--- APP ---'
-			print '-----------'
 			tmpLastObj = processRequest(packet, helper.getUrlWithoutQuery(packet['url']), packet['ip'])
 			startAnomalyDetection(packet, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])}), tmpLastObj, TYPE.APP)
 
 
 			## User filtering
-			print '------------'
-			print '--- User ---'
-			print '------------'
 			tmpLastObj = processRequest(packet, packet['ip'], helper.getUrlWithoutQuery(packet['url']))
 			startAnomalyDetection(packet, ProfileUserMongoDB.find_one({'_id': packet['ip']}), tmpLastObj, TYPE.USER)
 

@@ -66,8 +66,6 @@ def getFileType(inputLine):
 
 
 def makeTimeline(mongo, inputLine, value):
-	print inputLine
-	print value
 	timelineDict = mongo.find_one({'_id' : inputLine})['general_timeline']
 	timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
