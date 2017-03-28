@@ -66,12 +66,11 @@ def processLine(start, index):
 
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'_id': urlWithoutQuery}).count() == 0:
-			# OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
-			OutputMongoDB.insert_one({'_id': urlWithoutQuery, 'general_uniqueConnections': 1, 'metric_conn': {}})
+			OutputMongoDB.insert_one({'_id': urlWithoutQuery})
 
 
 
-		#### Batch update all metrics ####
+		#### FIRST BULK ####
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
@@ -85,10 +84,6 @@ def processLine(start, index):
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_uniqueConnections': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
-
-
-
 
 
 		#### Add querystring param ####
@@ -128,6 +123,18 @@ def processLine(start, index):
 			pass
 
 
+
+
+		#### SECOND BULK ####
+		bulk = OutputMongoDB.initialize_unordered_bulk_op()
+
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_uniqueConnections': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_ratioConnections': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+
+		try:
+			bulk.execute()
+		except Exception:
+			pass
 
 
 		#### Setup timeline ####
