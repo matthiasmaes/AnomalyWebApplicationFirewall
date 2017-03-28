@@ -4,6 +4,7 @@ class Record_App(object):
 	def __init__(self, expected_method, url):
 		self.url = url
 		self.general_totalConnections = 0
+		self.general_uniqueConnections = 0
 
 		#### Init all metrics ####
 		self.metric_geo = {}
@@ -15,6 +16,8 @@ class Record_App(object):
 		self.metric_request = {}
 		self.metric_status = {}
 		self.metric_method = {}
+		self.metric_conn = {}
+
 
 
 	def __eq__(self, other):

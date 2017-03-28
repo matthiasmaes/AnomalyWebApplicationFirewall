@@ -67,7 +67,8 @@ def processLine(start, index):
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'_id': urlWithoutQuery}).count() == 0:
 			# OutputMongoDB.insert_one((Record_App(inputLine['method'], urlWithoutQuery)).__dict__)
-			OutputMongoDB.insert_one({'_id': urlWithoutQuery})
+			OutputMongoDB.insert_one({'_id': urlWithoutQuery, 'general_uniqueConnections': 1, 'metric_conn': {}})
+
 
 
 		#### Batch update all metrics ####
@@ -84,6 +85,10 @@ def processLine(start, index):
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_uniqueConnections': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
+
+
+
 
 
 		#### Add querystring param ####
@@ -121,6 +126,8 @@ def processLine(start, index):
 			bulk.execute()
 		except Exception:
 			pass
+
+
 
 
 		#### Setup timeline ####
