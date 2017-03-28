@@ -3,8 +3,7 @@ class Record_App(object):
 
 	def __init__(self, expected_method, url):
 		self.url = url
-		self.general_totalConnections = 0
-		self.general_uniqueConnections = 0
+		self.general = {'totalConnections' : 0, 'uniqueConnections' : 0}
 
 		#### Init all metrics ####
 		self.metric_geo = {}
