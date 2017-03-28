@@ -4,28 +4,35 @@ from watchdog.events import PatternMatchingEventHandler
 
 
 class MyHandler(PatternMatchingEventHandler):
-	patterns = ["*.xml", "*.lxml"]
-
-	def process(self, event):
-		print event.src_path, event.event_type  # print now only for degug
-
 	def on_modified(self, event):
-		self.process(event)
 
-		def on_created(self, event):
-			self.process(event)
+		print 'Event'
+		with open('C:/wamp64/logs/access.log', 'r') as f:
+			# ### TODO: first and last line won't be read
+			# seekOn = 0
+			# for x in xrange(0, -500, -1):
+			# 	try:
+			# 		f.seek(x, 2)
+			# 		if repr(f.readline()) == repr('\n'):
+			# 			if x + 1 < -4:
+			# 				break
+			# 	except Exception as e:
+			# 		pass
+			# print repr(f.readline())
+			f.seek(0,2)
+			print f.readline()
 
 
 
 
 if __name__ == '__main__':
 	observer = Observer()
-	observer.schedule(MyHandler(), path='C:/Users/bebxadvmmae/Desktop')
+	observer.schedule(MyHandler(), path='C:/wamp64/logs')
 	observer.start()
 
 	try:
 		while True:
-			time.sleep(1)
+			pass
 	except KeyboardInterrupt:
 		observer.stop()
 
