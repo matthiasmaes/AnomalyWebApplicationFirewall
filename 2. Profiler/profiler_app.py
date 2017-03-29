@@ -74,7 +74,7 @@ def processLine(start, index):
 
 
 
-		#### Add document on first occurance  ####
+		#### Add document on first occurance ####
 		if OutputMongoDB.find({'_id': urlWithoutQuery}).count() == 0:
 			OutputMongoDB.insert_one({'_id': urlWithoutQuery})
 
@@ -96,6 +96,7 @@ def processLine(start, index):
 		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
 
 
+		#### Test if connection is related to admin/login/normal activity
 		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
 		elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
@@ -143,27 +144,6 @@ def processLine(start, index):
 
 
 
-		#### SECOND BULK ####
-		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
-
-		# if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
-		# 	bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_login.admin.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_login']['admin']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
-		# elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
-		# 	bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.user.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_login']['user']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
-		# else:
-		# 	bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.normal.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_login']['normal']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
-
-
-
-		try:
-			bulk.execute()
-		except Exception:
-			pass
-
-
 		#### Setup timeline ####
 		helper.makeTimeline(OutputMongoDB,  urlWithoutQuery, inputLine['ip'].replace('.', '_'))
 
@@ -176,7 +156,6 @@ def processLine(start, index):
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_request', OutputMongoDB)
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_status', OutputMongoDB)
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_method', OutputMongoDB)
-
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_login', OutputMongoDB)
 
 

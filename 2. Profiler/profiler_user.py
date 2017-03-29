@@ -143,30 +143,6 @@ def processLine(start, index):
 
 
 
-		#### SECOND BULK ####
-		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-
-		amoutUniqueConns = len(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_conn'])
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.counter': amoutUniqueConns }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.ratio': float(amoutUniqueConns) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections'])}})
-
-
-
-		# if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
-		# 	bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_login.admin.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_login']['admin']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
-		# elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
-		# 	bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.user.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_login']['user']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
-		# else:
-		# 	bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.normal.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_login']['normal']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
-
-
-
-		try:
-			bulk.execute()
-		except Exception:
-			pass
-
-
 		#### See helper.py for details on functions ####
 		helper.makeTimeline(OutputMongoDB, inputLine['ip'], urlWithoutQuery)
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_agent', OutputMongoDB)
