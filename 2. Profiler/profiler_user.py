@@ -24,6 +24,11 @@ OutputMongoDB = MongoClient().profile_user['profile_user_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 BotMongoDB = MongoClient().config_static.profile_bots
 
+AdminMongoList = []
+
+for admin in MongoClient().config_static.profile_admin.find():
+	AdminMongoList.append(admin['name'])
+
 
 #### Place index on url field to speed up searches through db ####
 # OutputMongoDB.create_index('url', background=True)
@@ -85,7 +90,8 @@ def processLine(start, index):
 
 
 
-		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+
+		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_admin.counter': 1 }})
 
 
@@ -136,9 +142,7 @@ def processLine(start, index):
 		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.counter': amoutUniqueConns }})
 		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.ratio': float(amoutUniqueConns) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections'])}})
 
-
-
-		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_admin.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_admin']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
 
 		try:
@@ -147,11 +151,8 @@ def processLine(start, index):
 			pass
 
 
-		#### Setup timeline ####
+		#### See helper.py for details on functions ####
 		helper.makeTimeline(OutputMongoDB, inputLine['ip'], urlWithoutQuery)
-
-
-		#### Calculate ratios ####
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_agent', OutputMongoDB)
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_time', OutputMongoDB)
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_day', OutputMongoDB)

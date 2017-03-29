@@ -25,6 +25,10 @@ OutputMongoDB = MongoClient().profile_app['profile_app_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 BotMongoDB = MongoClient().config_static.profile_bots
 
+AdminMongoList = []
+for admin in MongoClient().config_static.profile_admin.find():
+	AdminMongoList.append(admin['name'])
+
 
 #### Place index on url field to speed up searches through db ####
 # OutputMongoDB.create_index('_id', background=True)
@@ -88,7 +92,7 @@ def processLine(start, index):
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
 
 
-		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_admin.counter': 1 }})
 
 
@@ -137,7 +141,7 @@ def processLine(start, index):
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
 
-		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_admin.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_admin']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
 
 		try:
