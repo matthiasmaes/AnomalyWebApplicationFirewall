@@ -63,6 +63,9 @@ def processLine(start, index):
 		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url'])
 		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
 
+		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+			print 'Admin'
+
 
 		#### Add document on first occurance  ####
 		if OutputMongoDB.find({'_id': urlWithoutQuery}).count() == 0:

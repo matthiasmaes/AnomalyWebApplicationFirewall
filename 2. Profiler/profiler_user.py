@@ -70,9 +70,9 @@ def processLine(start, index):
 
 		#### Setup bulk stream ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'general.totalConnections': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general.timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general.location': helper.GeoLocate(inputLine['ip'], options.ping) }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'general_totalConnections': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general_location': helper.GeoLocate(inputLine['ip'], options.ping) }})
 		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
@@ -117,6 +117,20 @@ def processLine(start, index):
 			bulk.execute()
 		except Exception as e:
 			print e.details
+
+
+
+		#### SECOND BULK ####
+		bulk = OutputMongoDB.initialize_unordered_bulk_op()
+
+		amoutUniqueConns = len(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_conn'])
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.counter': amoutUniqueConns }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.ratio': float(amoutUniqueConns) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections'])}})
+
+		try:
+			bulk.execute()
+		except Exception:
+			pass
 
 
 		#### Setup timeline ####
