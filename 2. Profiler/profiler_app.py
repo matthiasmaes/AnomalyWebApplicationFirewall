@@ -29,6 +29,10 @@ AdminMongoList = []
 for admin in MongoClient().config_static.profile_admin.find():
 	AdminMongoList.append(admin['name'])
 
+UserMongoList = []
+for user in MongoClient().config_static.profile_user.find():
+	UserMongoList.append(user['name'])
+
 
 #### Place index on url field to speed up searches through db ####
 # OutputMongoDB.create_index('_id', background=True)
@@ -78,22 +82,26 @@ def processLine(start, index):
 
 		#### FIRST BULK ####
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
 
 
 		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_admin.counter': 1 }})
+			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
+		elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
+			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.user.counter': 1 }})
+		else:
+			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
 
 
 		#### Add querystring param ####
@@ -119,10 +127,10 @@ def processLine(start, index):
 
 
 					#### Add to bulk updates ####
-					bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
-					bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
+					bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
 
 
@@ -138,11 +146,17 @@ def processLine(start, index):
 		#### SECOND BULK ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
+		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
 
-		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_admin.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_admin']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+		# if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
+		# 	bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_login.admin.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_login']['admin']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+		# elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
+		# 	bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.user.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_login']['user']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+		# else:
+		# 	bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.normal.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_login']['normal']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+
+
 
 		try:
 			bulk.execute()
@@ -162,6 +176,9 @@ def processLine(start, index):
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_request', OutputMongoDB)
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_status', OutputMongoDB)
 		helper.calculateRatio('_id', urlWithoutQuery, 'metric_method', OutputMongoDB)
+
+		helper.calculateRatio('_id', urlWithoutQuery, 'metric_login', OutputMongoDB)
+
 
 
 		#### Update progress ####

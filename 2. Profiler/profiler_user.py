@@ -25,9 +25,12 @@ InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
 BotMongoDB = MongoClient().config_static.profile_bots
 
 AdminMongoList = []
-
 for admin in MongoClient().config_static.profile_admin.find():
 	AdminMongoList.append(admin['name'])
+
+UserMongoList = []
+for user in MongoClient().config_static.profile_user.find():
+	UserMongoList.append(user['name'])
 
 
 #### Place index on url field to speed up searches through db ####
@@ -92,7 +95,12 @@ def processLine(start, index):
 
 
 		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_admin.counter': 1 }})
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
+		elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.user.counter': 1 }})
+		else:
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
+
 
 
 
@@ -122,10 +130,10 @@ def processLine(start, index):
 
 
 					#### Add to bulk updates ####
-					bulk.find({'_id': inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({'_id': inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
-					bulk.find({'_id': inputLine['ip'] }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({'_id': inputLine['ip'] }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 
 		#### Execute bulk statement ####
 		try:
@@ -142,8 +150,16 @@ def processLine(start, index):
 		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.counter': amoutUniqueConns }})
 		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.ratio': float(amoutUniqueConns) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections'])}})
 
-		if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_admin.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_admin']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
+
+
+		# if len([s for s in AdminMongoList if s in urlWithoutQuery]) != 0:
+		# 	bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_login.admin.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_login']['admin']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
+		# elif len([s for s in UserMongoList if s in urlWithoutQuery]) != 0:
+		# 	bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.user.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_login']['user']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
+		# else:
+		# 	bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.normal.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_login']['normal']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
+
+
 
 		try:
 			bulk.execute()
@@ -161,6 +177,8 @@ def processLine(start, index):
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_status', OutputMongoDB)
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_method', OutputMongoDB)
 		helper.calculateRatio('_id', inputLine['ip'], 'metric_ext', OutputMongoDB)
+
+		helper.calculateRatio('_id', inputLine['ip'], 'metric_login', OutputMongoDB)
 
 
 		#### Update progress ####
