@@ -63,8 +63,7 @@ def processLine(start, index):
 		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url'])
 		queryString = [element.replace('.', '_') for element in helper.getQueryString(inputLine['url'])]
 
-		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
-			print 'Admin'
+
 
 
 		#### Add document on first occurance  ####
@@ -87,6 +86,10 @@ def processLine(start, index):
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
+
+
+		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_admin.counter': 1 }})
 
 
 		#### Add querystring param ####
@@ -133,6 +136,9 @@ def processLine(start, index):
 
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
+
+		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+			bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_admin.ratio': float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_admin']['counter']) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
 
 		try:
 			bulk.execute()

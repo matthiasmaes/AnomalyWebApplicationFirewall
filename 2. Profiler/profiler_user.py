@@ -84,6 +84,15 @@ def processLine(start, index):
 		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_conn.' + urlWithoutQuery + '.counter': 1 }})
 
 
+
+		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_admin.counter': 1 }})
+
+
+
+
+
+
 		#### Add querystring param ####
 		if len(queryString) > 0:
 			for param in queryString:
@@ -126,6 +135,11 @@ def processLine(start, index):
 		amoutUniqueConns = len(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_conn'])
 		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.counter': amoutUniqueConns }})
 		bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_unique.ratio': float(amoutUniqueConns) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections'])}})
+
+
+
+		if 'admin' in urlWithoutQuery.lower() or 'administrator' in urlWithoutQuery.lower():
+			bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_admin.ratio': float(OutputMongoDB.find_one({'_id': inputLine['ip']})['metric_admin']['counter']) / float(OutputMongoDB.find_one({'_id': inputLine['ip']})['general_totalConnections']) }})
 
 		try:
 			bulk.execute()
