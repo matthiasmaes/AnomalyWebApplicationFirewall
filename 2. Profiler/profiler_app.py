@@ -128,8 +128,8 @@ def processLine(start, index):
 		#### SECOND BULK ####
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general.uniqueConnections': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general.ratioConnections': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general']['totalConnections']) }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general']['totalConnections']) }})
 
 		try:
 			bulk.execute()
