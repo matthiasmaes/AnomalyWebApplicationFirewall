@@ -31,7 +31,7 @@ def calculateRatio(identifier, value, metric, mongo):
 	currRecord = mongo.find_one({identifier: value })
 	for metricEntry in currRecord[metric]:
 		if metricEntry is not '' or metricEntry is not None:
-			mongo.update({identifier: value}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general']['totalConnections'])}})
+			mongo.update({identifier: value}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
 
 def calculateRatioParam(identifier, value, pKey, mongo):
@@ -67,7 +67,7 @@ def getFileType(inputLine):
 
 
 def makeTimeline(mongo, inputLine, value):
-	timelineDict = mongo.find_one({'_id' : inputLine})['general']['timeline']
+	timelineDict = mongo.find_one({'_id' : inputLine})['general_timeline']
 	timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
 	for event in timelineList:

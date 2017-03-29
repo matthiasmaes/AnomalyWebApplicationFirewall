@@ -72,8 +72,8 @@ def processLine(start, index):
 
 		#### FIRST BULK ####
 		bulk = OutputMongoDB.initialize_ordered_bulk_op()
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'general.totalConnections': 1 }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general.timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'general_totalConnections': 1 }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
@@ -129,7 +129,7 @@ def processLine(start, index):
 		bulk = OutputMongoDB.initialize_unordered_bulk_op()
 
 		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.counter': len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn']) }})
-		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general']['totalConnections']) }})
+		bulk.find({'_id': urlWithoutQuery }).update_one({'$set': { 'metric_unique.ratio': float(len(OutputMongoDB.find_one({'_id': urlWithoutQuery})['metric_conn'])) / float(OutputMongoDB.find_one({'_id': urlWithoutQuery})['general_totalConnections']) }})
 
 		try:
 			bulk.execute()
