@@ -57,17 +57,22 @@ class Helper(object):
 				self.OutputMongoDB.update({'_id': value}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
 
-	def calculateRatioParam(self, value, pKey):
+	def calculateRatioParam(self, key, queryString):
 		""" Method for calculating the ratio for a given metric """
+		currRecord = self.OutputMongoDB.find_one({'_id': key })
 
-		currRecord = self.OutputMongoDB.find_one({'_id': value })
-		for param in currRecord['metric_param'][pKey]:
-			try:
-				#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
-				self.OutputMongoDB.update({'_id': value}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
-			except TypeError:
-				#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
-				pass
+		if len(queryString) > 0:
+			for param in queryString:
+				if len(param.split('=')) == 2:
+					pKey = param.split('=')[0]
+					for param in currRecord['metric_param'][pKey]:
+						try:
+							#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
+							self.OutputMongoDB.update({'_id': key}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
+						except TypeError:
+							#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
+							pass
+
 
 
 	def getQueryString(self, inputLine):
@@ -136,7 +141,7 @@ class Helper(object):
 
 		#### Insert record if it doesn't exists ####
 		if self.OutputMongoDB.find({'_id': key}).count() == 0:
-			self.OutputMongoDB.insert_one({'_id': key})
+			self.OutputMongoDB.insert_one({'_id': key, 'metric_param' : {} })
 
 		#### Setup bulk stream ####
 		bulk = self.OutputMongoDB.initialize_unordered_bulk_op()
@@ -185,12 +190,15 @@ class Helper(object):
 					bulk.find({'_id': key}).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
 					bulk.find({'_id': key}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
 		#### Execute bulk statement ####
 		try:
 			bulk.execute()
 		except Exception as e:
 			print e.details
+
+
 
 		#### See self.py for details on functions ####
 		self.makeTimeline(key, otherKey)
@@ -203,3 +211,4 @@ class Helper(object):
 		self.calculateRatio(key, 'metric_ext')
 		self.calculateRatio(key, 'metric_login')
 		self.calculateRatio(key, 'metric_conn')
+		self.calculateRatioParam(key, queryString)
