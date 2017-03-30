@@ -14,7 +14,6 @@ initTime = str('%02d' % datetime.datetime.now().hour) + ':' +  str('%02d' % date
 startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
 
-
 #### Init helper object ####
 helperObj = Helper()
 
@@ -60,7 +59,6 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-
 			helperObj.processLineApp(inputLine, options)
 
 		#### Update progress ####

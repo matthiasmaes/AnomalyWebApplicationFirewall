@@ -122,7 +122,7 @@ class Helper(object):
 
 
 	def processLineApp(self, inputLine, options):
-		#### Ending conditions ####
+
 		if inputLine is None:
 			return
 
@@ -149,7 +149,6 @@ class Helper(object):
 		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_geo.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
 
-
 		#### Test if connection is related to admin/login/normal activity
 		if len([s for s in self.AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
@@ -158,14 +157,12 @@ class Helper(object):
 		else:
 			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
 
-
 		#### Add querystring param ####
 		if len(queryString) > 0:
 			for param in queryString:
 				if len(param.split('=')) == 2:
 					pKey = param.split('=')[0]
 					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
-
 
 					#### Determine type of param ####
 					try:
@@ -176,10 +173,8 @@ class Helper(object):
 					except Exception:
 						print param
 
-
 					#### Detecting special chars in param ####
 					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
-
 
 					#### Add to bulk updates ####
 					bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
@@ -187,21 +182,14 @@ class Helper(object):
 					bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 					bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
-
-
 		#### Execute batch ####
 		try:
 			bulk.execute()
 		except Exception:
 			pass
 
-
-
-
-		#### Setup timeline ####
+		#### See self.py for details on functions ####
 		self.makeTimeline(self.OutputMongoDB,  urlWithoutQuery, inputLine['ip'].replace('.', '_'))
-
-		#### Calculate ratio for metrics ####
 		self.calculateRatio('_id', urlWithoutQuery, 'metric_geo', self.OutputMongoDB)
 		self.calculateRatio('_id', urlWithoutQuery, 'metric_agent', self.OutputMongoDB)
 		self.calculateRatio('_id', urlWithoutQuery, 'metric_time', self.OutputMongoDB)
@@ -212,3 +200,91 @@ class Helper(object):
 		self.calculateRatio('_id', urlWithoutQuery, 'metric_method', self.OutputMongoDB)
 		self.calculateRatio('_id', urlWithoutQuery, 'metric_login', self.OutputMongoDB)
 
+
+
+
+	def processLineUser(self, inputLine, options):
+
+		if inputLine is None:
+			return
+
+		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
+		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['url'])]
+
+		#### Insert record if it doesn't exists ####
+		if self.OutputMongoDB.find({'_id': inputLine['ip']}).count() == 0:
+			self.OutputMongoDB.insert_one({'_id': inputLine['ip']})
+
+		#### Setup bulk stream ####
+		bulk = OutputMongoDB.initialize_unordered_bulk_op()
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'general_totalConnections': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_ext.' + self.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_status.' + inputLine['code'] +'.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_method.' + inputLine['method'] +'.counter': 1 }})
+		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_conn.' + urlWithoutQuery + '.counter': 1 }})
+
+		#### Categorize conn admin/user/normal ####
+		if len([s for s in self.AdminMongoList if s in urlWithoutQuery]) != 0:
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
+		elif len([s for s in self.UserMongoList if s in urlWithoutQuery]) != 0:
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.user.counter': 1 }})
+		else:
+			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
+
+		#### Add querystring param ####
+		if len(queryString) > 0:
+			for param in queryString:
+				if len(param.split('=')) == 2:
+					pKey = param.split('=')[0]
+					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
+
+					#### Determine type of param ####
+					try:
+						int(pValue)
+						paramType = 'int'
+					except ValueError:
+						paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
+					except Exception:
+						print param
+
+					#### Detecting special chars in param ####
+					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
+
+					#### Add to bulk updates ####
+					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+
+		#### Execute bulk statement ####
+		try:
+			bulk.execute()
+		except Exception as e:
+			print e.details
+
+		#### See self.py for details on functions ####
+		self.makeTimeline(OutputMongoDB, inputLine['ip'], urlWithoutQuery)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_agent', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_time', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_day', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_conn', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_request', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_status', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_method', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_ext', OutputMongoDB)
+		self.calculateRatio('_id', inputLine['ip'], 'metric_login', OutputMongoDB)
+
+
+
+
+
+
+	
