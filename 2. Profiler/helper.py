@@ -7,6 +7,8 @@ from collections import OrderedDict
 from optparse import OptionParser
 
 
+class TYPE:
+	USER, APP = range(2)
 
 class Helper(object):
 
@@ -125,10 +127,10 @@ class Helper(object):
 
 	def processLineCombined(self, typeProfile, inputLine, options):
 
-		if typeProfile == 'USER':
+		if typeProfile == TYPE.USER:
 			key = inputLine['ip']
 			otherKey = self.getUrlWithoutQuery(inputLine['url']).replace('.','_')
-		elif typeProfile == 'APP':
+		elif typeProfile == TYPE.APP:
 			key = self.getUrlWithoutQuery(inputLine['url'])
 			otherKey = inputLine['ip'].replace('.','_')
 

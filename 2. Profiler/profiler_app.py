@@ -45,7 +45,8 @@ diffLines = int(options.endindex) - int(options.startIndex) + 1
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 progressBarObj.start()
 
-
+class TYPE:
+	USER, APP = range(2)
 
 def processLine(start, index):
 	""" Assign workers with workload """
@@ -59,7 +60,7 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-			helperObj.processLineCombined('APP', inputLine, options)
+			helperObj.processLineCombined(TYPE.APP, inputLine, options)
 
 		#### Update progress ####
 		converted += 1

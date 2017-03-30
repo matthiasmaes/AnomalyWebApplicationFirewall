@@ -1,8 +1,9 @@
 import calendar
-import helper
 import datetime
 from pymongo import MongoClient
 from record import Record
+
+from helper import Helper
 
 ProcessedMongo = MongoClient().Firewall.processed
 StreamMongoDB = MongoClient().Firewall.TestStream
@@ -16,6 +17,8 @@ BotMongoDB = MongoClient().config_static.profile_bots
 threshold_ratio = 0.1
 threshold_counter = 5
 
+#### Init helper object ####
+helperObj = Helper()
 
 #### Init options ####
 options, args = helperObj.setupParser()
@@ -283,12 +286,12 @@ if __name__ == '__main__':
 
 
 			## App filtering
-			tmpLastObj = helperObj.processLineCombined('APP', inputLine, options)
+			tmpLastObj = helperObj.processLineCombined(TYPE.APP, inputLine, options)
 			startAnomalyDetection(inputLine, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(inputLine['url'])}), tmpLastObj, TYPE.APP)
 
 
 			## User filtering
-			tmpLastObj = helperObj.processLineCombined('USER', inputLine, options)
+			tmpLastObj = helperObj.processLineCombined(TYPE.USER, inputLine, options)
 			startAnomalyDetection(inputLine, ProfileUserMongoDB.find_one({'_id': inputLine['ip']}), tmpLastObj, TYPE.USER)
 
 
@@ -300,17 +303,17 @@ if __name__ == '__main__':
 				print 'Delete failed'
 
 
-			#### Store all modified fields ####
-			return {
-				'location': helper.GeoLocate(inputRequest['ip'], True),
-				'time': timestamp.strftime("%H"),
-				'agent': inputRequest['uagent'].replace('.', '_'),
-				'ext': helper.getFileType(inputRequest['requestUrl']),
-				'request': inputRequest['requestUrl'].replace('.', '_'),
-				'status': inputRequest['code'],
-				'method': inputRequest['method'],
-				'param': queryString
-			}
+			# #### Store all modified fields ####
+			# return {
+			# 	'location': helper.GeoLocate(inputRequest['ip'], True),
+			# 	'time': timestamp.strftime("%H"),
+			# 	'agent': inputRequest['uagent'].replace('.', '_'),
+			# 	'ext': helper.getFileType(inputRequest['requestUrl']),
+			# 	'request': inputRequest['requestUrl'].replace('.', '_'),
+			# 	'status': inputRequest['code'],
+			# 	'method': inputRequest['method'],
+			# 	'param': queryString
+			# }
 
 
 
