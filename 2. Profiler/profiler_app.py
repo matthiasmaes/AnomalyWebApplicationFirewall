@@ -83,27 +83,36 @@ endRange = int(options.linesPerThread)
 intLinesPerThread = int(options.linesPerThread)
 loops = int(math.ceil(float(diffLines) / float(intLinesPerThread)))
 
+try:
+	for index in xrange(0, loops):
 
-for index in xrange(0, loops):
+		#### Hold until worker is free ####
+		while str(activeWorkers) == str(options.threads):
+			pass
 
-	#### Hold until worker is free ####
-	while str(activeWorkers) == str(options.threads):
-		pass
+		#### Start of worker ####
+		activeWorkers += 1
+		t = threading.Thread(target=processLine, args=(startRange, index,))
+		threads.append(t)
+		t.start()
 
-	#### Start of worker ####
-	activeWorkers += 1
-	t = threading.Thread(target=processLine, args=(startRange, index,))
-	threads.append(t)
-	t.start()
+		#### Set range for next thread ####
+		startRange += intLinesPerThread
 
-	#### Set range for next thread ####
-	startRange += intLinesPerThread
+except Exception as e:
+	raise e
 
-#### Wait for all workers to finish ####
-for thread in threads:
-	thread.join()
+except KeyboardInterrupt:
+	print 'Script cancelled by user'
 
-progressBarObj.finish()
+finally:
+	progressBarObj.finish()
+	for thread in threads:
+		thread.join()
+
+
+
+
 
 
 #### Print statistics ####
