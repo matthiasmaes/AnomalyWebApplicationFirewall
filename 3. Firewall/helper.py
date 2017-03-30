@@ -6,6 +6,11 @@ import datetime
 from collections import OrderedDict
 from optparse import OptionParser
 
+class TYPE:
+	USER, APP = range(2)
+
+class SCRIPT:
+	PROFILER, FIREWALL = range(2)
 
 
 class Helper(object):
@@ -123,12 +128,12 @@ class Helper(object):
 
 
 
-	def processLineCombined(self, typeProfile, inputLine, options):
+	def processLineCombined(self, typeProfile, script, inputLine, options):
 
-		if typeProfile == 'USER':
+		if typeProfile == TYPE.USER:
 			key = inputLine['ip']
 			otherKey = self.getUrlWithoutQuery(inputLine['url']).replace('.','_')
-		elif typeProfile == 'APP':
+		elif typeProfile == TYPE.APP:
 			key = self.getUrlWithoutQuery(inputLine['url'])
 			otherKey = inputLine['ip'].replace('.','_')
 
@@ -212,3 +217,17 @@ class Helper(object):
 		self.calculateRatio(key, 'metric_login')
 		self.calculateRatio(key, 'metric_conn')
 		self.calculateRatioParam(key, queryString)
+
+
+
+		if script == SCRIPT.FIREWALL:
+			return {
+				'location': self.GeoLocate(inputLine['ip'], True),
+				'time': timestamp.strftime("%H"),
+				'agent': inputLine['uagent'].replace('.', '_'),
+				'ext': self.getFileType(inputLine['requestUrl']),
+				'request': inputLine['requestUrl'].replace('.', '_'),
+				'status': inputLine['code'],
+				'method': inputLine['method'],
+				'param': queryString
+			}

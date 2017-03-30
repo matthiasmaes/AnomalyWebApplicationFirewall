@@ -5,28 +5,47 @@ from record import Record
 
 from helper import Helper
 
-ProcessedMongo = MongoClient().Firewall.processed
-StreamMongoDB = MongoClient().Firewall.TestStream
-ProfileAppMongoDB = MongoClient().profile_app['profile_app_11:35:52']
-ProfileUserMongoDB = MongoClient().profile_user['profile_user_10:52:35']
-MessageMongoDB = MongoClient().engine_log.firewall_messages
-
-IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
-BotMongoDB = MongoClient().config_static.profile_bots
-
-threshold_ratio = 0.1
-threshold_counter = 5
-
 #### Init helper object ####
 helperObj = Helper()
 
 #### Init options ####
 options, args = helperObj.setupParser()
 
+helperObj.OutputMongoDB = MongoClient().Firewall.processed
+StreamMongoDB = MongoClient().Firewall.TestStream
+ProfileAppMongoDB = MongoClient().profile_app['TEST']
+ProfileUserMongoDB = MongoClient().profile_user['TEST']
+MessageMongoDB = MongoClient().engine_log.firewall_messages
+
+IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
+helperObj.BotMongoDB = MongoClient().config_static.profile_bots
+
+
+#### Get list of admin strings ####
+AdminMongoList = []
+for admin in MongoClient().config_static.profile_admin.find():
+	AdminMongoList.append(admin['name'])
+helperObj.AdminMongoList = AdminMongoList
+
+#### Get list of user strings ####
+UserMongoList = []
+for user in MongoClient().config_static.profile_user.find():
+	UserMongoList.append(user['name'])
+helperObj.UserMongoList = UserMongoList
+
+
+
+
+threshold_ratio = 0.1
+threshold_counter = 5
+
+
 
 class TYPE:
 	USER, APP = range(2)
 
+class SCRIPT:
+	PROFILER, FIREWALL = range(2)
 
 ###########################
 #### ANOMALY DETECTION ####
@@ -35,8 +54,7 @@ class TYPE:
 def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	""" Start anomaly detection process """
 
-
-	requestRecord = ProcessedMongo.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])})
+	requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 
 	anomaly_TotalConnections(profileRecord, requestRecord, tmpLastObj)
 	anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
@@ -45,9 +63,13 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-
 	anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
+
+
+def reportAlert(msg, details):
+	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
+	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + '(' + details + ')'})
 
 
 
@@ -62,14 +84,13 @@ def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
 		# anomaly_IpStatic(requestRecord, tmpLastObj)
 
 		if tmpLastObj['location'] != profileRecord['general_location']:
-			result = '[ALARM] IP changed from location'
+			reportAlert('IP changed from location', tmpLastObj['location'])
 	else:
-		if tmpLastObj['location'] in profileRecord['metric_geo']:
+		if tmpLastObj['location'] in profileRecord['metric_location']:
 			anomaly_GeoCounter(profileRecord, requestRecord, tmpLastObj)
 			anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj)
 		else:
-			result = '[ALERT] Unknown locations has connected ({})'.format(tmpLastObj['location'])
-			if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+			reportAlert('Unknown location', tmpLastObj['location'])
 
 def anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in time metric """
@@ -78,8 +99,7 @@ def anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_TimeCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_TimeRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		result = '[ALERT] Connection at unfamiliar time ({})'.format(tmpLastObj['time'])
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+		reportAlert('Unknown time', tmpLastObj['time'])
 
 def anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in agent metric """
@@ -98,8 +118,8 @@ def anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_ExtCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_ExtRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		result = '[ALERT] Request for unusual file type ({})'.format(tmpLastObj['ext'])
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+		reportAlert('Unknown ext', tmpLastObj['ext'])
+
 
 def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in request metric """
@@ -108,8 +128,8 @@ def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_RequestCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		result = '[ALERT] Unfamiliar resource requested ({})'.format(tmpLastObj['request'])
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+		reportAlert('Unknown request', tmpLastObj['request'])
+
 
 def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in status metric """
@@ -118,8 +138,8 @@ def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_StatusCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		result = '[ALERT] Unfamiliar status request ({})'.format(tmpLastObj['status'])
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+		reportAlert('Unknown status', tmpLastObj['status'])
+
 
 
 def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
@@ -129,8 +149,7 @@ def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_MethodCounter(profileRecord, requestRecord, tmpLastObj)
 		anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
-		result = '[ALERT] Unfamiliar method request ({})'.format(tmpLastObj['method'])
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+		reportAlert('Unknown method', tmpLastObj['method'])
 
 
 
@@ -286,35 +305,18 @@ if __name__ == '__main__':
 
 
 			## App filtering
-			tmpLastObj = helperObj.processLineCombined(TYPE.APP, inputLine, options)
-			startAnomalyDetection(inputLine, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(inputLine['url'])}), tmpLastObj, TYPE.APP)
+			tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, inputLine, options)
+			startAnomalyDetection(inputLine, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(inputLine['url'])}), tmpLastObj, TYPE.APP)
 
 
 			## User filtering
-			tmpLastObj = helperObj.processLineCombined(TYPE.USER, inputLine, options)
+			tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, inputLine, options)
 			startAnomalyDetection(inputLine, ProfileUserMongoDB.find_one({'_id': inputLine['ip']}), tmpLastObj, TYPE.USER)
-
-
 
 			#### Remove from queue ###
 			try:
 				StreamMongoDB.delete_one({'_id': inputRequest['_id']})
 			except Exception:
 				print 'Delete failed'
-
-
-			# #### Store all modified fields ####
-			# return {
-			# 	'location': helper.GeoLocate(inputRequest['ip'], True),
-			# 	'time': timestamp.strftime("%H"),
-			# 	'agent': inputRequest['uagent'].replace('.', '_'),
-			# 	'ext': helper.getFileType(inputRequest['requestUrl']),
-			# 	'request': inputRequest['requestUrl'].replace('.', '_'),
-			# 	'status': inputRequest['code'],
-			# 	'method': inputRequest['method'],
-			# 	'param': queryString
-			# }
-
-
-
-			print '-----------------'
+			finally:
+				print '-----------------'
