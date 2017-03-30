@@ -17,126 +17,12 @@ threshold_ratio = 0.1
 threshold_counter = 5
 
 
+#### Init options ####
+options, args = helperObj.setupParser()
+
+
 class TYPE:
 	USER, APP = range(2)
-
-
-
-#################
-#### HELPERS ####
-#################
-
-def processRequest(inputRequest, keyValue, otherkeyValue):
-	""" Assign workers with workload """
-
-	global activeWorkers
-
-	#### Ending conditions ####
-	if inputRequest is None:
-		return
-
-	timestamp = datetime.datetime.strptime(inputRequest['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
-	urlWithoutQuery = helper.getUrlWithoutQuery(inputRequest['url'])
-	queryString = [element.replace('.', '_') for element in helper.getQueryString(inputRequest['url'])]
-
-
-	#### Add document on first occurance  ####
-	if ProcessedMongo.find({'_id': keyValue}).count() == 0:
-		ProcessedMongo.insert_one({'_id': keyValue})
-
-
-	#### Batch update all metrics ####
-	bulk = ProcessedMongo.initialize_ordered_bulk_op()
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'general_totalConnections': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): otherkeyValue}})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_agent.' + inputRequest['uagent'].replace('.', '_') + '.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$set': { 'metric_agent.' + inputRequest['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputRequest['uagent']}).count() == 0 else 'Bot' }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_request.' + inputRequest['requestUrl'].replace('.', '_') + '.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_ext.' + helper.getFileType(inputRequest['requestUrl']) +'.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_status.' + inputRequest['code'] +'.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_method.' + inputRequest['method'] +'.counter': 1 }})
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_geo.' + helper.GeoLocate(inputRequest['ip'], True) + '.counter': 1 }})
-
-	## INVESTIGATE ####
-	bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_conn.' + otherkeyValue.replace('.', '_') + '.counter': 1 }})
-
-
-	#### Add querystring param ####
-	if len(queryString) > 0:
-		for param in queryString:
-			if len(param.split('=')) == 2:
-				pKey = param.split('=')[0]
-				pValue = '-' if not param.split('=')[1] else param.split('=')[1]
-
-
-				#### Determine type of param ####
-				try:
-					int(pValue)
-					paramType = 'int'
-				except ValueError:
-					paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
-				except Exception:
-					print param
-
-
-				#### Detecting special chars in param ####
-				chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
-
-
-				#### Add to bulk updates ####
-				bulk.find({'_id': keyValue }).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-				bulk.find({'_id': keyValue }).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-				bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
-				bulk.find({'_id': keyValue }).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
-
-
-	#### Execute batch ####
-	try:
-		bulk.execute()
-	except Exception:
-		pass
-
-	#### Setup timeline ####
-	helper.makeTimeline(ProcessedMongo, keyValue, otherkeyValue.replace('.', '_'))
-
-
-	#### Calculate ratio for metrics ####
-	helper.calculateRatio('_id', keyValue, 'metric_geo', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_agent', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_time', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_day', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_ext', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_request', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_status', ProcessedMongo)
-	helper.calculateRatio('_id', keyValue, 'metric_method', ProcessedMongo)
-
-
-
-
-	#### Remove from queue ###
-	try:
-		StreamMongoDB.delete_one({'_id': inputRequest['_id']})
-	except Exception:
-		print 'Delete failed'
-
-
-	#### Store all modified fields ####
-	return {
-		'location': helper.GeoLocate(inputRequest['ip'], True),
-		'time': timestamp.strftime("%H"),
-		'agent': inputRequest['uagent'].replace('.', '_'),
-		'ext': helper.getFileType(inputRequest['requestUrl']),
-		'request': inputRequest['requestUrl'].replace('.', '_'),
-		'status': inputRequest['code'],
-		'method': inputRequest['method'],
-		'param': queryString
-	}
-
-
-
-
 
 
 ###########################
@@ -392,18 +278,40 @@ def anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj):
 if __name__ == '__main__':
 	print 'Waiting for packet...'
 	while True:
-		for packet in StreamMongoDB.find():
+		for inputLine in StreamMongoDB.find():
 			print 'Started processing'
 
 
 			## App filtering
-			tmpLastObj = processRequest(packet, helper.getUrlWithoutQuery(packet['url']), packet['ip'])
-			startAnomalyDetection(packet, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(packet['url'])}), tmpLastObj, TYPE.APP)
+			tmpLastObj = helperObj.processLineCombined('APP', inputLine, options)
+			startAnomalyDetection(inputLine, ProfileAppMongoDB.find_one({'_id': helper.getUrlWithoutQuery(inputLine['url'])}), tmpLastObj, TYPE.APP)
 
 
 			## User filtering
-			tmpLastObj = processRequest(packet, packet['ip'], helper.getUrlWithoutQuery(packet['url']))
-			startAnomalyDetection(packet, ProfileUserMongoDB.find_one({'_id': packet['ip']}), tmpLastObj, TYPE.USER)
+			tmpLastObj = helperObj.processLineCombined('USER', inputLine, options)
+			startAnomalyDetection(inputLine, ProfileUserMongoDB.find_one({'_id': inputLine['ip']}), tmpLastObj, TYPE.USER)
+
+
+
+			#### Remove from queue ###
+			try:
+				StreamMongoDB.delete_one({'_id': inputRequest['_id']})
+			except Exception:
+				print 'Delete failed'
+
+
+			#### Store all modified fields ####
+			return {
+				'location': helper.GeoLocate(inputRequest['ip'], True),
+				'time': timestamp.strftime("%H"),
+				'agent': inputRequest['uagent'].replace('.', '_'),
+				'ext': helper.getFileType(inputRequest['requestUrl']),
+				'request': inputRequest['requestUrl'].replace('.', '_'),
+				'status': inputRequest['code'],
+				'method': inputRequest['method'],
+				'param': queryString
+			}
+
 
 
 			print '-----------------'
