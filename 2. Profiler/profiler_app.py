@@ -4,7 +4,7 @@ import threading
 import math
 import IP2Location
 import dns.resolver
-import helper
+from helper import Helper
 from pymongo import MongoClient
 from optparse import OptionParser
 
@@ -15,32 +15,32 @@ startTime = datetime.datetime.now()
 converted, activeWorkers = 0, 0
 
 
-#### Init options ####
-options, args = helper.setupParser()
+#### Init helper object ####
+helperObj = Helper()
 
+#### Init options ####
+options, args = helperObj.setupParser()
 
 #### Init DB ####
-OutputMongoDB = MongoClient().profile_app['profile_app_' + initTime]
 InputMongoDB = MongoClient().FormattedLogs[options.inputMongo]
-BotMongoDB = MongoClient().config_static.profile_bots
+helperObj.OutputMongoDB = MongoClient().profile_app['profile_app_' + initTime]
+helperObj.BotMongoDB = MongoClient().config_static.profile_bots
 
+#### Get list of admin strings ####
 AdminMongoList = []
 for admin in MongoClient().config_static.profile_admin.find():
 	AdminMongoList.append(admin['name'])
+helperObj.AdminMongoList = AdminMongoList
 
+#### Get list of user strings ####
 UserMongoList = []
 for user in MongoClient().config_static.profile_user.find():
 	UserMongoList.append(user['name'])
-
-
-#### Place index on url field to speed up searches through db ####
-# OutputMongoDB.create_index('_id', background=True)
-
+helperObj.UserMongoList = UserMongoList
 
 #### Determening lines to process####
 options.endindex = InputMongoDB.count() if int(options.endindex) == 0 else int(options.endindex)
 diffLines = int(options.endindex) - int(options.startIndex) + 1
-
 
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
@@ -61,7 +61,7 @@ def processLine(start, index):
 		else:
 			progressBarObj.update(converted)
 
-			helper.processLineApp(inputLine, OutputMongoDB, BotMongoDB, options, AdminMongoList, UserMongoList)
+			helperObj.processLineApp(inputLine, options)
 
 		#### Update progress ####
 		converted += 1
@@ -84,6 +84,7 @@ intLinesPerThread = int(options.linesPerThread)
 loops = int(math.ceil(float(diffLines) / float(intLinesPerThread)))
 
 try:
+
 	for index in xrange(0, loops):
 
 		#### Hold until worker is free ####
@@ -110,12 +111,6 @@ finally:
 	for thread in threads:
 		thread.join()
 
-
-
-
-
-
-#### Print statistics ####
-print('Total execution time: {} seconds'.format((datetime.datetime.now() - startTime).total_seconds()))
-print('Average lines per second: {} l/s'.format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
-# TODO: More statistics
+	#### Print statistics ####
+	print('Total execution time: {} seconds'.format((datetime.datetime.now() - startTime).total_seconds()))
+	print('Average lines per second: {} l/s'.format(int(diffLines / (datetime.datetime.now() - startTime).total_seconds())))
