@@ -59,7 +59,7 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-			helperObj.processLineApp(inputLine, options)
+			helperObj.processLineCombined('APP', inputLine, options)
 
 		#### Update progress ####
 		converted += 1
@@ -82,7 +82,6 @@ intLinesPerThread = int(options.linesPerThread)
 loops = int(math.ceil(float(diffLines) / float(intLinesPerThread)))
 
 try:
-
 	for index in xrange(0, loops):
 
 		#### Hold until worker is free ####

@@ -48,23 +48,23 @@ class Helper(object):
 				return "Domain translation disabled"
 
 
-	def calculateRatio(self, identifier, value, metric, mongo):
+	def calculateRatio(self, value, metric):
 		""" Method for calculating the ratio for a given metric """
 
-		currRecord = mongo.find_one({identifier: value })
+		currRecord = self.OutputMongoDB.find_one({'_id': value })
 		for metricEntry in currRecord[metric]:
 			if metricEntry is not '' or metricEntry is not None:
-				mongo.update({identifier: value}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
+				self.OutputMongoDB.update({'_id': value}, {'$set': {metric + '.' + metricEntry + '.ratio': float(currRecord[metric][metricEntry]['counter']) / float(currRecord['general_totalConnections'])}})
 
 
-	def calculateRatioParam(self, identifier, value, pKey, mongo):
+	def calculateRatioParam(self, value, pKey):
 		""" Method for calculating the ratio for a given metric """
 
-		currRecord = mongo.find_one({identifier: value })
+		currRecord = self.OutputMongoDB.find_one({'_id': value })
 		for param in currRecord['metric_param'][pKey]:
 			try:
 				#### Update ratio on all affected records and metrics (if counter changes on one metric, ratio on all has to be updated) ####
-				mongo.update({identifier: value}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
+				self.OutputMongoDB.update({'_id': value}, {'$set': { 'metric_param' + '.' + pKey + '.' + param + '.ratio': float(currRecord['metric_param'][pKey][param]['counter']) / float(currRecord['metric_param'][pKey]['counter'])}})
 			except TypeError:
 				#### Not every metric has a counter/ratio field, this will be catched by the TypeError exception ####
 				pass
@@ -89,8 +89,8 @@ class Helper(object):
 		return filetype
 
 
-	def makeTimeline(self, mongo, inputLine, value):
-		timelineDict = mongo.find_one({'_id' : inputLine})['general_timeline']
+	def makeTimeline(self, inputLine, value):
+		timelineDict = self.OutputMongoDB.find_one({'_id' : inputLine})['general_timeline']
 		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
 		for event in timelineList:
@@ -104,140 +104,62 @@ class Helper(object):
 			delta = time2 - time1
 
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
-				counter = mongo.find_one({ '_id' : inputLine })['metric_conn'][value]['counter']
+				counter = self.OutputMongoDB.find_one({ '_id' : inputLine })['metric_conn'][value]['counter']
 				try:
-					orgAvg = mongo.find_one({ '_id' : inputLine })['metric_timespent'][value]
+					orgAvg = self.OutputMongoDB.find_one({ '_id' : inputLine })['metric_timespent'][value]
 					newAvg = orgAvg + ((delta.total_seconds() - orgAvg) / counter)
 				except KeyError:
 					newAvg = delta.total_seconds()
 				finally:
-					mongo.update_one({ '_id' : inputLine }, { '$set' : {'metric_timespent.' + value : int(newAvg)}})
+					self.OutputMongoDB.update_one({ '_id' : inputLine }, { '$set' : {'metric_timespent.' + value : int(newAvg)}})
 
 
 
 
 
 
+	def processLineCombined(self, typeProfile, inputLine, options):
 
-
-
-	def processLineApp(self, inputLine, options):
-
-		if inputLine is None:
-			return
-
-		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
-		urlWithoutQuery = self.getUrlWithoutQuery(inputLine['url'])
-		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['url'])]
-
-		#### Add document on first occurance ####
-		if self.OutputMongoDB.find({'_id': urlWithoutQuery}).count() == 0:
-			self.OutputMongoDB.insert_one({'_id': urlWithoutQuery})
-
-		#### FIRST BULK ####
-		bulk = self.OutputMongoDB.initialize_ordered_bulk_op()
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'general_totalConnections': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['ip']}})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if self.BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_ext.' + self.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_status.' + inputLine['code'] +'.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_method.' + inputLine['method'] +'.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_geo.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
-		bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_conn.' + inputLine['ip'].replace('.', '_') + '.counter': 1 }})
-
-		#### Test if connection is related to admin/login/normal activity
-		if len([s for s in self.AdminMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
-		elif len([s for s in self.UserMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.user.counter': 1 }})
-		else:
-			bulk.find({'_id': urlWithoutQuery }).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
-
-		#### Add querystring param ####
-		if len(queryString) > 0:
-			for param in queryString:
-				if len(param.split('=')) == 2:
-					pKey = param.split('=')[0]
-					pValue = '-' if not param.split('=')[1] else param.split('=')[1]
-
-					#### Determine type of param ####
-					try:
-						int(pValue)
-						paramType = 'int'
-					except ValueError:
-						paramType = 'bool' if pValue == 'true' or pValue == 'false' else 'string'
-					except Exception:
-						print param
-
-					#### Detecting special chars in param ####
-					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
-
-					#### Add to bulk updates ####
-					bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({'_id': urlWithoutQuery}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
-					bulk.find({'_id': urlWithoutQuery}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
-
-		#### Execute batch ####
-		try:
-			bulk.execute()
-		except Exception:
-			pass
-
-		#### See self.py for details on functions ####
-		self.makeTimeline(self.OutputMongoDB,  urlWithoutQuery, inputLine['ip'].replace('.', '_'))
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_geo', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_agent', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_time', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_day', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_ext', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_request', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_status', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_method', self.OutputMongoDB)
-		self.calculateRatio('_id', urlWithoutQuery, 'metric_login', self.OutputMongoDB)
-
-
-
-
-	def processLineUser(self, inputLine, options):
+		if typeProfile == 'USER':
+			key = inputLine['ip']
+			otherKey = self.getUrlWithoutQuery(inputLine['url']).replace('.','_')
+		elif typeProfile == 'APP':
+			key = self.getUrlWithoutQuery(inputLine['url'])
+			otherKey = inputLine['ip'].replace('.','_')
 
 		if inputLine is None:
 			return
 
 		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
-		urlWithoutQuery = helper.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
+		urlWithoutQuery = self.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
 		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['url'])]
 
 		#### Insert record if it doesn't exists ####
-		if self.OutputMongoDB.find({'_id': inputLine['ip']}).count() == 0:
-			self.OutputMongoDB.insert_one({'_id': inputLine['ip']})
+		if self.OutputMongoDB.find({'_id': key}).count() == 0:
+			self.OutputMongoDB.insert_one({'_id': key})
 
 		#### Setup bulk stream ####
-		bulk = OutputMongoDB.initialize_unordered_bulk_op()
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'general_totalConnections': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): inputLine['url']}})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$set': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_ext.' + self.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_status.' + inputLine['code'] +'.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_method.' + inputLine['method'] +'.counter': 1 }})
-		bulk.find({'_id': inputLine['ip']}).update_one({'$inc': {'metric_conn.' + urlWithoutQuery + '.counter': 1 }})
+		bulk = self.OutputMongoDB.initialize_unordered_bulk_op()
+		bulk.find({'_id': key}).update_one({'$inc': {'general_totalConnections': 1 }})
+		bulk.find({'_id': key}).update_one({'$set': {'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): otherKey}})
+		bulk.find({'_id': key}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$set': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.uagentType': 'Human' if self.BotMongoDB.find({'agent': inputLine['uagent']}).count() == 0 else 'Bot' }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_request.' + inputLine['requestUrl'].replace('.', '_') + '.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_ext.' + self.getFileType(inputLine['requestUrl']) +'.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_status.' + inputLine['code'] +'.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_method.' + inputLine['method'] +'.counter': 1 }})
+		bulk.find({'_id': key}).update_one({'$inc': {'metric_conn.' + otherKey + '.counter': 1 }})
 
 		#### Categorize conn admin/user/normal ####
 		if len([s for s in self.AdminMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
+			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
 		elif len([s for s in self.UserMongoList if s in urlWithoutQuery]) != 0:
-			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.user.counter': 1 }})
+			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.user.counter': 1 }})
 		else:
-			bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
+			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -259,10 +181,10 @@ class Helper(object):
 					chars = 'special' if any(char in string.punctuation for char in pValue) else 'normal'
 
 					#### Add to bulk updates ####
-					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
-					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
-					bulk.find({'_id': inputLine['ip']}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
-					bulk.find({'_id': inputLine['ip']}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
+					bulk.find({'_id': key}).update_one({'$set': { 'metric_param.' + pKey + '.characters': chars}})
+					bulk.find({'_id': key}).update_one({'$set': { 'metric_param.' + pKey + '.length': len(pValue)}})
+					bulk.find({'_id': key}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
+					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 
 		#### Execute bulk statement ####
 		try:
@@ -271,20 +193,13 @@ class Helper(object):
 			print e.details
 
 		#### See self.py for details on functions ####
-		self.makeTimeline(OutputMongoDB, inputLine['ip'], urlWithoutQuery)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_agent', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_time', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_day', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_conn', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_request', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_status', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_method', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_ext', OutputMongoDB)
-		self.calculateRatio('_id', inputLine['ip'], 'metric_login', OutputMongoDB)
-
-
-
-
-
-
-	
+		self.makeTimeline(key, otherKey)
+		self.calculateRatio(key, 'metric_agent')
+		self.calculateRatio(key, 'metric_time')
+		self.calculateRatio(key, 'metric_day')
+		self.calculateRatio(key, 'metric_request')
+		self.calculateRatio(key, 'metric_status')
+		self.calculateRatio(key, 'metric_method')
+		self.calculateRatio(key, 'metric_ext')
+		self.calculateRatio(key, 'metric_login')
+		self.calculateRatio(key, 'metric_conn')

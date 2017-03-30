@@ -57,7 +57,7 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-			helperObj.processLineApp(inputLine, options)
+			helperObj.processLineCombined('USER', inputLine, options)
 
 		#### Update progress ####
 		converted += 1
