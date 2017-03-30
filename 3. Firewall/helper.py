@@ -152,7 +152,10 @@ class Helper(object):
 		bulk = self.OutputMongoDB.initialize_unordered_bulk_op()
 		bulk.find({'_id': key}).update_one({'$inc': {'general_totalConnections': 1 }})
 		bulk.find({'_id': key}).update_one({'$set': {'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): otherKey}})
-		bulk.find({'_id': key}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
+		if typeProfile == TYPE.USER:
+			bulk.find({'_id': key}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
+		elif typeProfile == TYPE.APP:
+			bulk.find({'_id': key}).update_one({'$inc': {'metric_geo.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
