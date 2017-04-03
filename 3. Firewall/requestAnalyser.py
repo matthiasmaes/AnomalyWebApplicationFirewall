@@ -2,8 +2,11 @@ import calendar
 import datetime
 from pymongo import MongoClient
 from record import Record
-from helper import Helper
 from formattedLine import FormattedLine
+
+import sys
+sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
+from helper import Helper
 
 #### Init helper object ####
 helperObj = Helper()
