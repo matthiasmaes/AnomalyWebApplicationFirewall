@@ -1,6 +1,4 @@
-import sys
 import time
-import logging
 from watchdog.observers import Observer
 from watchdog.events import LoggingEventHandler
 
@@ -11,7 +9,7 @@ def printEvent(Event):
 if __name__ == "__main__":
     path = 'C:/wamp64/logs' 
     observer = Observer()
-    observer.schedule(printEvent(), path, recursive=True)
+    # observer.schedule(printEvent(), path, recursive=True)
     observer.start()
     try:
         while True:

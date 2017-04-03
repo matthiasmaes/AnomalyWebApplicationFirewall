@@ -6,7 +6,7 @@ from watchdog.events import PatternMatchingEventHandler
 class MyHandler(PatternMatchingEventHandler):
 	def on_modified(self, event):
 
-		print 'Event'
+		print 'Event' + event
 		# with open('C:/wamp64/logs/access.log', 'r') as f:
 		# 	### TODO: first and last line won't be read
 		# 	seekOn = 0
