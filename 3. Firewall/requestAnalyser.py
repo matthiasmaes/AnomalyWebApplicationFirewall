@@ -2,8 +2,8 @@ import calendar
 import datetime
 from pymongo import MongoClient
 from record import Record
-
 from helper import Helper
+from formattedLine import FormattedLine
 
 #### Init helper object ####
 helperObj = Helper()
@@ -12,7 +12,6 @@ helperObj = Helper()
 options, args = helperObj.setupParser()
 
 helperObj.OutputMongoDB = MongoClient().Firewall.processed
-StreamMongoDB = MongoClient().Firewall.TestStream
 ProfileAppMongoDB = MongoClient().profile_app['TEST']
 ProfileUserMongoDB = MongoClient().profile_user['TEST']
 MessageMongoDB = MongoClient().engine_log.firewall_messages
@@ -38,6 +37,7 @@ helperObj.UserMongoList = UserMongoList
 
 threshold_ratio = 0.1
 threshold_counter = 5
+index = 0
 
 
 
@@ -65,7 +65,6 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
-
 
 def reportAlert(msg, details):
 	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
@@ -120,7 +119,6 @@ def anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj):
 	else:
 		reportAlert('Unknown ext', tmpLastObj['ext'])
 
-
 def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in request metric """
 
@@ -129,7 +127,6 @@ def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
 		reportAlert('Unknown request', tmpLastObj['request'])
-
 
 def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in status metric """
@@ -140,8 +137,6 @@ def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
 	else:
 		reportAlert('Unknown status', tmpLastObj['status'])
 
-
-
 def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in method metric """
 
@@ -150,11 +145,6 @@ def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
 		anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj)
 	else:
 		reportAlert('Unknown method', tmpLastObj['method'])
-
-
-
-
-
 
 def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in parameter metric """
@@ -293,30 +283,58 @@ def anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj):
 		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
+
+
+def processLine(inputLine, index):
+	index += 1
+	cleandedLine = filter(None, [x.strip() for x in inputLine.replace('""','"-"').split('"')])
+	ip = cleandedLine[0].split(' ')[0]
+	fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
+	method = cleandedLine[1].split(' ')[0]
+	requestUrl = cleandedLine[1].split(' ')[1]
+	code = cleandedLine[2].split(' ')[0]
+	size = cleandedLine[2].split(' ')[1]
+	url = cleandedLine[3]
+	uagent = cleandedLine[4]
+	return FormattedLine(index, ip, fulltime, method, requestUrl, code, size, url, uagent).__dict__
+
+
 ##############
 #### MAIN ####
 ##############
 
 if __name__ == '__main__':
 	print 'Waiting for packet...'
-	while True:
-		for inputLine in StreamMongoDB.find():
-			print 'Started processing'
+
+	import time
+	with open('C:/wamp64/logs/access.log') as fileobject:
+		fileobject.seek(0,2)
+
+		while True:
+			inputLine = fileobject.readline()
+			print inputLine
+			if inputLine != '':
+				print 'Started processing'
+
+				#### Create line object and insert it in mongodb
+				lineObj = processLine(inputLine, index)
 
 
-			## App filtering
-			tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, inputLine, options)
-			startAnomalyDetection(inputLine, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(inputLine['url'])}), tmpLastObj, TYPE.APP)
+				## App filtering
+				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
+				startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}), tmpLastObj, TYPE.APP)
 
 
-			## User filtering
-			tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, inputLine, options)
-			startAnomalyDetection(inputLine, ProfileUserMongoDB.find_one({'_id': inputLine['ip']}), tmpLastObj, TYPE.USER)
+				## User filtering
+				tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
+				startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
 
-			#### Remove from queue ###
-			try:
-				StreamMongoDB.delete_one({'_id': inputRequest['_id']})
-			except Exception:
-				print 'Delete failed'
-			finally:
-				print '-----------------'
+				#### Remove from queue ###
+				try:
+					StreamMongoDB.delete_one({'_id': inputRequest['_id']})
+				except Exception:
+					print 'Delete failed'
+				finally:
+					print '-----------------'
+			else:
+				time.sleep(1)

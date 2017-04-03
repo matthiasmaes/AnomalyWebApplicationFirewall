@@ -8,7 +8,7 @@ parser = OptionParser()
 parser.add_option("-l", "--log", action="store", dest="log", default="access.log", help="Input log file for profiler")
 parser.add_option("-f", "--format", action="store", dest="format", default="combined", help="Format of the input log")
 parser.add_option("-t", "--threads", action="store", dest="threads", default="12", help="Amout of threats that can be used")
-parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="250", help="Max lines per thread")
+parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="100", help="Max lines per thread")
 parser.add_option("-p", "--procent", action="store", dest="procentToParse", default="100", help="Set how much of the logfile to parse")
 parser.add_option("-s", "--start", action="store", dest="startToParse", default="0", help="Set line number to start parsing from")
 parser.add_option("-d", "--db", action="store", dest="dbName", default="", help="Set collection to add parsed lines")
@@ -68,7 +68,7 @@ def formatLine(lines, index):
 			index += 1
 
 		except Exception as e:
-			#print 'Following error occured: {} on line {}'.format(line, e)
+			print 'Following error occured: {} on line {}'.format(line, e)
 			print e
 
 	global activeWorkers
@@ -82,10 +82,12 @@ threads = []
 i = 0
 with open(options.log) as fileobject:
 	for index, line in enumerate(fileobject, startIndex):
+
+		print line
 		lines.append(line)
 
 		#### If lines reach max per thread or eof a worker is started ####
-		if index % int(float(options.linesPerThread)) == 0 or index == num_lines or index == endIndex:
+		if index % int(float(options.linesPerThread)) == 0 or index >= num_lines or index >= endIndex:
 
 			#### Wait for a free worker ####
 			while str(activeWorkers) == str(options.threads):

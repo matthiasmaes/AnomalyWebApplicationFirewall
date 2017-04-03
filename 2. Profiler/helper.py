@@ -27,7 +27,7 @@ class Helper(object):
 		parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 		parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
 		parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
-		parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
+		parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="TEST", help="Input via mongo")
 		parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 		parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 		return parser.parse_args()
