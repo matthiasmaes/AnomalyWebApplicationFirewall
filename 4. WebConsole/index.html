@@ -66,6 +66,8 @@
 				<a class="mdl-navigation__link" href=""><i class="mdl-color-text--blue-grey-400 material-icons" role="presentation">home</i>Home</a>
 				<a class="mdl-navigation__link" id="show-dialog-admin"><i class="mdl-color-text--blue-grey-400 material-icons" role="presentation">add</i>Add admin url</p>
 				<a class="mdl-navigation__link" id="show-dialog-user"><i class="mdl-color-text--blue-grey-400 material-icons" role="presentation">add</i>Add user url</p>
+				<a class="mdl-navigation__link" id="show-dialog-bot"><i class="mdl-color-text--blue-grey-400 material-icons" role="presentation">add</i>Add bot agent</p>
+				<a class="mdl-navigation__link" id="show-dialog-ip"><i class="mdl-color-text--blue-grey-400 material-icons" role="presentation">add</i>Add IP</p>
 
 
 
@@ -210,7 +212,7 @@
 			<form action="#">
 				<div class="mdl-textfield mdl-js-textfield">
 					<input class="mdl-textfield__input" type="text" id="userUrlSubmission">
-					<label class="mdl-textfield__label" for="adminUrlSubmission">URL...</label>
+					<label class="mdl-textfield__label" for="userUrlSubmission">URL...</label>
 				</div>
 			</form>
 		</div>
@@ -218,6 +220,40 @@
 			<button type="button" class="mdl-button submit">SUBMIT</button>
 		</div>
 	</dialog>
+
+	<dialog class="mdl-dialog" id="botAgent">
+		<h4 class="mdl-dialog__title">New Bot</h4>
+		<div class="mdl-dialog__content">
+			<form action="#">
+				<div class="mdl-textfield mdl-js-textfield">
+					<input class="mdl-textfield__input" type="text" id="botAgentSubmission">
+					<label class="mdl-textfield__label" for="botAgentSubmission">Bot...</label>
+				</div>
+			</form>
+		</div>
+		<div class="mdl-dialog__actions">
+			<button type="button" class="mdl-button submit">SUBMIT</button>
+		</div>
+	</dialog>
+
+
+
+	<dialog class="mdl-dialog" id="malIP">
+		<h4 class="mdl-dialog__title">New IP</h4>
+		<div class="mdl-dialog__content">
+			<form action="#">
+				<div class="mdl-textfield mdl-js-textfield">
+					<input class="mdl-textfield__input" type="text" id="malIPSubmission">
+					<label class="mdl-textfield__label" for="malIPSubmission">IP...</label>
+				</div>
+			</form>
+		</div>
+		<div class="mdl-dialog__actions">
+			<button type="button" class="mdl-button submit">SUBMIT</button>
+		</div>
+	</dialog>
+
+
 
 
 

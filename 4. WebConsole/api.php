@@ -11,11 +11,19 @@
 		} elseif($_GET['function'] == 'addAdmin') {
 			$dbname = $connection -> selectDB('config_static');
 			$collection = $dbname -> selectCollection('profile_admin');
-			$collection->insert(array('name' => $_GET['data']));
+			$collection -> insert(array('name' => $_GET['data']));
 		} elseif($_GET['function'] == 'addUser') {
 			$dbname = $connection -> selectDB('config_static');
 			$collection = $dbname -> selectCollection('profile_user');
-			$collection->insert(array('name' => $_GET['data']));
+			$collection -> insert(array('name' => $_GET['data']));
+		} elseif ($_GET['function'] == 'addBot') {
+			$dbname = $connection -> selectDB('config_static');
+			$collection = $dbname -> selectCollection('profile_bots');
+			$collection -> insert(array('agent' => $_GET['data']));
+		} elseif ($_GET['function'] == 'addIP') {
+			$dbname = $connection -> selectDB('config_static');
+			$collection = $dbname -> selectCollection('firewall_blocklist');
+			$collection -> insert(array('ip' => $_GET['data']));
 		}
 	}
 ?>
