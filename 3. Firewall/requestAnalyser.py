@@ -332,6 +332,7 @@ if __name__ == '__main__':
 
 
 				## App filtering
+				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
 
 				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}).count() > 0:
@@ -340,13 +341,14 @@ if __name__ == '__main__':
 					print 'Not profiled page'
 
 
-				# ## User filtering
-				# tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
+				## User filtering
+				print '\n----- User analysis -----'
+				tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
 
-				# if ProfileUserMongoDB.find({'_id': lineObj['ip']}).count() > 0:
-				# 	startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
-				# else:
-				# 	print 'Not profiled page'
+				if ProfileUserMongoDB.find({'_id': lineObj['ip']}).count() > 0:
+					startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
+				else:
+					print 'Not profiled user'
 
 
 				print '===== Analysis Finished =====\n\n\n\n\n'
