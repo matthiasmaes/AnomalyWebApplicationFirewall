@@ -48,6 +48,10 @@ progressBarObj.start()
 class TYPE:
 	USER, APP = range(2)
 
+class SCRIPT:
+	PROFILER, FIREWALL = range(2)
+
+
 def processLine(start, index):
 	""" Assign workers with workload """
 
@@ -60,7 +64,7 @@ def processLine(start, index):
 			break
 		else:
 			progressBarObj.update(converted)
-			helperObj.processLineCombined(TYPE.APP, inputLine, options)
+			helperObj.processLineCombined(TYPE.APP, SCRIPT.PROFILER, inputLine, options)
 
 		#### Update progress ####
 		converted += 1

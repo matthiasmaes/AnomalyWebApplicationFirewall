@@ -6,9 +6,12 @@ import datetime
 from collections import OrderedDict
 from optparse import OptionParser
 
-
 class TYPE:
 	USER, APP = range(2)
+
+class SCRIPT:
+	PROFILER, FIREWALL = range(2)
+
 
 class Helper(object):
 
@@ -35,11 +38,15 @@ class Helper(object):
 	def GeoLocate(self, ip, ping):
 		""" Method for translating ip-address to geolocation (country) """
 
+		if ip == '::1':
+			return 'Belgium'
+
 		try:
 			IP2LocObj = IP2Location.IP2Location();
 			IP2LocObj.open("sources\IP2GEODB.BIN");
 			return IP2LocObj.get_all(ip).country_long;
 		except Exception as e:
+			print 'geo'
 			print e
 			if ping:
 				try:
@@ -125,7 +132,7 @@ class Helper(object):
 
 
 
-	def processLineCombined(self, typeProfile, inputLine, options):
+	def processLineCombined(self, typeProfile, script, inputLine, options):
 
 		if typeProfile == TYPE.USER:
 			key = inputLine['ip']
@@ -149,12 +156,10 @@ class Helper(object):
 		bulk = self.OutputMongoDB.initialize_unordered_bulk_op()
 		bulk.find({'_id': key}).update_one({'$inc': {'general_totalConnections': 1 }})
 		bulk.find({'_id': key}).update_one({'$set': {'general_timeline.' + timestamp.strftime('%d/%b/%Y %H:%M:%S'): otherKey}})
-
 		if typeProfile == TYPE.USER:
 			bulk.find({'_id': key}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
 		elif typeProfile == TYPE.APP:
-			bulk.find({'_id': key}).update_one({'$inc': {'metric_geo.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
-
+			bulk.find({'_id': key}).update_one({'$inc': {'metric_location.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
@@ -219,3 +224,20 @@ class Helper(object):
 		self.calculateRatio(key, 'metric_login')
 		self.calculateRatio(key, 'metric_conn')
 		self.calculateRatioParam(key, queryString)
+
+		if typeProfile == TYPE.APP:
+			self.calculateRatio(key, 'metric_location')
+
+
+
+		if script == SCRIPT.FIREWALL:
+			return {
+				'location': self.GeoLocate(inputLine['ip'], True),
+				'time': timestamp.strftime("%H"),
+				'agent': inputLine['uagent'].replace('.', '_'),
+				'ext': self.getFileType(inputLine['requestUrl']),
+				'request': inputLine['requestUrl'].replace('.', '_'),
+				'status': inputLine['code'],
+				'method': inputLine['method'],
+				'param': queryString
+			}

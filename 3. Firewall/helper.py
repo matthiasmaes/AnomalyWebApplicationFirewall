@@ -30,7 +30,7 @@ class Helper(object):
 		parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
 		parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
 		parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
-		parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="DEMO", help="Input via mongo")
+		parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="TEST", help="Input via mongo")
 		parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 		parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
 		return parser.parse_args()
@@ -38,11 +38,15 @@ class Helper(object):
 	def GeoLocate(self, ip, ping):
 		""" Method for translating ip-address to geolocation (country) """
 
+		if ip == '::1':
+			return 'Belgium'
+
 		try:
 			IP2LocObj = IP2Location.IP2Location();
 			IP2LocObj.open("sources\IP2GEODB.BIN");
 			return IP2LocObj.get_all(ip).country_long;
 		except Exception as e:
+			print 'geo'
 			print e
 			if ping:
 				try:
@@ -155,7 +159,7 @@ class Helper(object):
 		if typeProfile == TYPE.USER:
 			bulk.find({'_id': key}).update_one({'$set': {'general_location': self.GeoLocate(inputLine['ip'], options.ping) }})
 		elif typeProfile == TYPE.APP:
-			bulk.find({'_id': key}).update_one({'$inc': {'metric_geo.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
+			bulk.find({'_id': key}).update_one({'$inc': {'metric_location.' + self.GeoLocate(inputLine['ip'], options.ping) + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_day.' + timestamp.strftime("%A") + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_time.' + timestamp.strftime("%H") + '.counter': 1 }})
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_agent.' + inputLine['uagent'].replace('.', '_') + '.counter': 1 }})
@@ -220,6 +224,9 @@ class Helper(object):
 		self.calculateRatio(key, 'metric_login')
 		self.calculateRatio(key, 'metric_conn')
 		self.calculateRatioParam(key, queryString)
+
+		if typeProfile == TYPE.APP:
+			self.calculateRatio(key, 'metric_location')
 
 
 
