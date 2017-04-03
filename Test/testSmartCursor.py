@@ -1,7 +1,10 @@
 import time
-with open('C:/Users/bebxadvmmae/Desktop/TODO.txt') as fileobject:
+with open('C:/wamp64/logs/access.log') as fileobject:
+	fileobject.seek(2,0)
 	while True:
 		line = fileobject.readline()
-		print line
 
-		time.sleep(1)
+		if line != '':
+			print line
+		else:
+			time.sleep(1)
