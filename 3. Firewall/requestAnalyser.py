@@ -52,15 +52,63 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	else:
 		requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 
-	anomaly_TotalConnections(profileRecord, requestRecord)
-	anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
-	anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj)
-	anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj)
-	anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj)
-	anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj)
-	anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-	anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
-	anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_TotalConnections(profileRecord, requestRecord)
+	# anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
+
+
+
+	for metric in ProfileAppMongoDB.find_one():
+		if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
+			anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+
+
+	# anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
+	# anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
+
+
+
+
+def anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj):
+
+	if tmpLastObj[metric] in profileRecord[metric]:
+		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
+		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
+	else:
+		reportGeneralAlert('Unknown found in', metric, tmpLastObj[metric])
+
+
+def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
+	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
+	result = '[ALERT] More status than usual ({} | {})'.format(diff, tmpLastObj[metric]) if threshold_counter < diff else '[OK] Status for resource safe ({} | {})'.format(diff, tmpLastObj[metric])
+	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', metric, diff)
+
+
+def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
+	""" Detect divergent status ratio """
+	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
+	result = '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj[metric]) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj[metric])
+	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', metric, diff)
+
+
+
+
+
+
+
+
+
+def reportGeneralAlert(msg, metric, details):
+	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
+	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
+	print timestamp + '[ALERT] ' + msg + ' (' + str(details) + ')'
+
+
+
 
 def reportAlert(msg, details):
 	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
@@ -328,20 +376,23 @@ if __name__ == '__main__':
 				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
 
+
+				print helperObj.getUrlWithoutQuery(lineObj['url'])
+
 				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}).count() > 0:
 					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}), tmpLastObj, TYPE.APP)
 				else:
 					print 'Not profiled page'
 
 
-				## User filtering
-				print '\n----- User analysis -----'
-				tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
+				# ## User filtering
+				# print '\n----- User analysis -----'
+				# tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
 
-				if ProfileUserMongoDB.find({'_id': lineObj['ip']}).count() > 0:
-					startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
-				else:
-					print 'Not profiled user'
+				# if ProfileUserMongoDB.find({'_id': lineObj['ip']}).count() > 0:
+				# 	startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
+				# else:
+				# 	print 'Not profiled user'
 
 
 				print '===== Analysis Finished =====\n\n\n\n\n'

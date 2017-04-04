@@ -132,6 +132,8 @@ class Helper(object):
 
 
 
+
+
 	def processLineCombined(self, typeProfile, script, inputLine, options):
 
 		if typeProfile == TYPE.USER:
@@ -173,10 +175,13 @@ class Helper(object):
 		#### Categorize conn admin/user/normal ####
 		if len([s for s in self.AdminMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
+			loginResult = 'metric_login.admin'
 		elif len([s for s in self.UserMongoList if s in urlWithoutQuery]) != 0:
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.user.counter': 1 }})
+			loginResult = 'metric_login.user'
 		else:
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
+			loginResult = 'metric_login.normal'
 
 		#### Add querystring param ####
 		if len(queryString) > 0:
@@ -232,12 +237,19 @@ class Helper(object):
 
 		if script == SCRIPT.FIREWALL:
 			return {
-				'location': self.GeoLocate(inputLine['ip'], True),
-				'time': timestamp.strftime("%H"),
-				'agent': inputLine['uagent'].replace('.', '_'),
-				'ext': self.getFileType(inputLine['requestUrl']),
-				'request': inputLine['requestUrl'].replace('.', '_'),
-				'status': inputLine['code'],
-				'method': inputLine['method'],
-				'param': queryString
+				'param': queryString,
+
+
+
+				'metric_method': inputLine['method'],
+				'metric_day': timestamp.strftime("%A"),
+				'metric_status': inputLine['code'],
+				'metric_agent': inputLine['uagent'].replace('.', '_'),
+				'metric_login': loginResult,
+				'metric_timespent': None,
+				'metric_location': self.GeoLocate(inputLine['ip'], True),
+				'metric_time': timestamp.strftime("%H"),
+				'metric_ext': self.getFileType(inputLine['requestUrl']),
+				'metric_request': inputLine['requestUrl'].replace('.', '_'),
+				'metric_conn': otherKey
 			}
