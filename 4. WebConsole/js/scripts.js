@@ -31,6 +31,7 @@ showDialogButtonIP.addEventListener('click', function() { dialogIP.showModal(); 
 
 
 
+
 dialogAdmin.querySelector('.submit').addEventListener('click', function() {
 	dialogAdmin.close();
 	$.ajax({url: 'api.php', data: "function=addAdmin&data=" + encodeURIComponent($('#adminUrlSubmission').val()) , dataType: "json"});
@@ -50,6 +51,12 @@ dialogIP.querySelector('.submit').addEventListener('click', function() {
 	dialogIP.close();
 	$.ajax({url: 'api.php', data: "function=addIP&data=" + encodeURIComponent($('#malIPSubmission').val()) , dataType: "json"})
 });
+
+document.querySelector('#clear-log').addEventListener('click', function() {
+	$.ajax({url: 'api.php', data: "function=clearLog" , dataType: "json"})
+	window.location.replace("index.html");
+});
+
 
 
 

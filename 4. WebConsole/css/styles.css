@@ -19,6 +19,15 @@ p {
 .logMsgEntry {
 	width: 100%;
 	color: rgb(112,112,112);
+  margin: 0;
+}
+
+#logMsg {
+  padding: 1.5rem;
+}
+
+.mdl-navigation__link:hover {
+  cursor: pointer;
 }
 
 html, body {
