@@ -47,29 +47,39 @@ index = 0
 def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	""" Start anomaly detection process """
 
-	if typeProfile == TYPE.USER:
-		requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
+	if (anomaly_IpStatic(packet['ip'])):
 
-		for metric in ProfileUserMongoDB.find_one():
-			if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
-				anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+		if typeProfile == TYPE.USER:
+			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
+			anomaly_TotalConnections(profileRecord, requestRecord)
+			for metric in ProfileUserMongoDB.find_one():
+				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
+					anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
 
+
+		else:
+			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
+			anomaly_TotalConnections(profileRecord, requestRecord)
+			for metric in ProfileAppMongoDB.find_one():
+				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
+					anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
 
 	else:
-		requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
-
-
-		for metric in ProfileAppMongoDB.find_one():
-			if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
-				anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+		print 'IP IS BLACKLISTED'
 
 
 
-	# anomaly_TotalConnections(profileRecord, requestRecord)
-	# anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
 
 
 
+
+
+def anomaly_TotalConnections (profileRecord, requestRecord):
+	""" Detect to many connections """
+
+	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
+	result = '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
+	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
 
 
 def anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj):
@@ -104,69 +114,14 @@ def reportGeneralAlert(msg, metric, details):
 
 
 
-#################
-#### UNKNOWS ####
-#################
-
-def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
-	""" Detect unknowns in geo metric """
-
-	if typeProfile == TYPE.USER:
-		# anomaly_IpStatic(requestRecord)
-
-		if tmpLastObj['location'] != profileRecord['general_location']:
-			reportAlert('IP changed from location', tmpLastObj['location'])
-	else:
-		if tmpLastObj['location'] in profileRecord['metric_location']:
-			anomaly_GeoCounter(profileRecord, requestRecord, tmpLastObj)
-			anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj)
-		else:
-			reportAlert('Unknown location', tmpLastObj['location'])
-
-
 
 
 #################
 #### STATICS ####
 #################
 
-#### only for user profiling ####
-def anomaly_IpStatic(requestRecord):
-	result = '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'_id' : requestRecord['_id'] }).count >= 1 else '[OK] IP not blacklisted'
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-
-##################
-#### COUNTERS ####
-##################
-
-def anomaly_TotalConnections (profileRecord, requestRecord):
-	""" Detect to many connections """
-
-	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	result = '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_GeoCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections from specific country """
-
-	diff = int(requestRecord['metric_location'][tmpLastObj['location']]['counter']) - int(profileRecord['metric_location'][tmpLastObj['location']]['counter'])
-	result = '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diff, tmpLastObj['location']) if threshold_counter < diff else '[OK] Connections from location safe ({} | {})'.format(diff, tmpLastObj['location'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-
-
-################
-#### RATIOS ####
-################
-
-def anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent geolocation ratio """
-	diff = float(requestRecord['metric_location'][tmpLastObj['location']]['ratio']) - float(profileRecord['metric_location'][tmpLastObj['location']]['ratio'])
-	result = '[OK] Ratio geolocation safe ({} | {})'.format(diff, tmpLastObj['location']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diff, tmpLastObj['location'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-
+def anomaly_IpStatic(ip):
+	return IPReputationMongoDB.find_one({'_id' : ip}) == None
 
 
 ##############
