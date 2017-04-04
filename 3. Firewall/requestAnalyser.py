@@ -61,7 +61,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	else:
 		requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 
-	anomaly_TotalConnections(profileRecord, requestRecord, tmpLastObj)
+	anomaly_TotalConnections(profileRecord, requestRecord)
 	anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
 	anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj)
 	anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj)
@@ -86,7 +86,7 @@ def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
 	""" Detect unknowns in geo metric """
 
 	if typeProfile == TYPE.USER:
-		# anomaly_IpStatic(requestRecord, tmpLastObj)
+		# anomaly_IpStatic(requestRecord)
 
 		if tmpLastObj['location'] != profileRecord['general_location']:
 			reportAlert('IP changed from location', tmpLastObj['location'])
@@ -169,7 +169,7 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 #################
 
 #### only for user profiling ####
-def anomaly_IpStatic(requestRecord, tmpLastObj):
+def anomaly_IpStatic(requestRecord):
 	result = '[Alert] Blocklisted ip detected' if IPReputationMongoDB.find_one({'_id' : requestRecord['_id'] }).count >= 1 else '[OK] IP not blacklisted'
 	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
@@ -178,7 +178,7 @@ def anomaly_IpStatic(requestRecord, tmpLastObj):
 #### COUNTERS ####
 ##################
 
-def anomaly_TotalConnections (profileRecord, requestRecord, tmpLastObj):
+def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
 
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])

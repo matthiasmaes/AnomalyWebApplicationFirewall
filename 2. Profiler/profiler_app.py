@@ -6,7 +6,7 @@ from pymongo import MongoClient
 
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
-from helper import Helper
+from helper import Helper, TYPE, SCRIPT
 
 
 #### Init global vars ####
@@ -44,12 +44,6 @@ diffLines = int(options.endindex) - int(options.startIndex) + 1
 #### Preparing progress bar ####
 progressBarObj = progressbar.ProgressBar(maxval=diffLines, widgets=[progressbar.Bar('=', '[', ']'), ' ', progressbar.Percentage()])
 progressBarObj.start()
-
-class TYPE:
-	USER, APP = range(2)
-
-class SCRIPT:
-	PROFILER, FIREWALL = range(2)
 
 
 def processLine(start, index):

@@ -6,10 +6,10 @@ import datetime
 from collections import OrderedDict
 from optparse import OptionParser
 
-class TYPE:
+class TYPE(object):
 	USER, APP = range(2)
 
-class SCRIPT:
+class SCRIPT(object):
 	PROFILER, FIREWALL = range(2)
 
 
@@ -21,7 +21,7 @@ class Helper(object):
 	def __get__(self):
 		return self.val
 
-	def __set__(self):
+	def __set__(self, obj, val):
 		self.val = val
 
 	def setupParser(self):
