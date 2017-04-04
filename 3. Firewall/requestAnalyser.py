@@ -71,19 +71,18 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 def anomaly_IpStatic(ip):
+	""" Check static blocklist with ips """
 	return IPReputationMongoDB.find_one({'_id' : ip}) == None
 
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
-
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	result = '[ALERT] Total conncections has been exceeded ({})'.format(diff) if threshold_counter < diff else '[OK] Total connections safe ({})'.format(diff)
-	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
+	if threshold_counter < diff reportGeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
 
 
 def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
-
+	""" Generic method for detecting unknown anomalies for the given metrics """
 	if tmpLastObj[metric] in profileRecord[metric]:
 		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
 		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
@@ -92,17 +91,19 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 
 
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
+	""" Generic method for detecting excessive counter on given metric """
 	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
 	if threshold_counter < diff: reportGeneralAlert('Counter exceeded', metric, diff)
 
 
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent status ratio """
+	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
 	if -threshold_ratio <= diff <= threshold_ratio: reportGeneralAlert('Ratio exceeded', metric, diff)
 
 
 def reportGeneralAlert(msg, metric, details):
+	""" Add timestamp and report incident to the firewall """
 	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
 	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
 	print timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'
@@ -116,7 +117,7 @@ def reportGeneralAlert(msg, metric, details):
 ##############
 
 if __name__ == '__main__':
-	print 'Waiting for packet...'
+	print 'Firewall started correctly'
 
 	import time
 	with open('C:/wamp64/logs/access.log') as fileobject:
