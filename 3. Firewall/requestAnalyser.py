@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
-from helper import Helper
+from helper import Helper, TYPE, SCRIPT
 from formattedLine import FormattedLine
 
 
@@ -35,19 +35,10 @@ for user in MongoClient().config_static.profile_user.find():
 helperObj.UserMongoList = UserMongoList
 
 
-
-
 threshold_ratio = 0.1
 threshold_counter = 5
 index = 0
 
-
-
-class TYPE:
-	USER, APP = range(2)
-
-class SCRIPT:
-	PROFILER, FIREWALL = range(2)
 
 ###########################
 #### ANOMALY DETECTION ####
