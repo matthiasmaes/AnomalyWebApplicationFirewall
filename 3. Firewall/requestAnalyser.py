@@ -54,7 +54,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
-					anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
 
 
 		else:
@@ -62,7 +62,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
-					anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
 
 	else:
 		print 'IP IS BLACKLISTED'
@@ -70,8 +70,8 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 
-
-
+def anomaly_IpStatic(ip):
+	return IPReputationMongoDB.find_one({'_id' : ip}) == None
 
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
@@ -82,7 +82,7 @@ def anomaly_TotalConnections (profileRecord, requestRecord):
 	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
 
 
-def anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj):
+def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 
 	if tmpLastObj[metric] in profileRecord[metric]:
 		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
@@ -93,18 +93,13 @@ def anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj):
 
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
-	result = '[ALERT] More status than usual ({} | {})'.format(diff, tmpLastObj[metric]) if threshold_counter < diff else '[OK] Status for resource safe ({} | {})'.format(diff, tmpLastObj[metric])
-	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', metric, diff)
+	if threshold_counter < diff: reportGeneralAlert('Counter exceeded', metric, diff)
 
 
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent status ratio """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	result = '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj[metric]) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj[metric])
-	if '[OK]' not in result: reportGeneralAlert('Ratio exceeded', metric, diff)
-
-
-
+	if -threshold_ratio <= diff <= threshold_ratio: reportGeneralAlert('Ratio exceeded', metric, diff)
 
 
 def reportGeneralAlert(msg, metric, details):
@@ -114,14 +109,6 @@ def reportGeneralAlert(msg, metric, details):
 
 
 
-
-
-#################
-#### STATICS ####
-#################
-
-def anomaly_IpStatic(ip):
-	return IPReputationMongoDB.find_one({'_id' : ip}) == None
 
 
 ##############
