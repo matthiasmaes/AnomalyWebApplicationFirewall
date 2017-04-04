@@ -5,6 +5,7 @@ import datetime
 
 from collections import OrderedDict
 from optparse import OptionParser
+from formattedLine import FormattedLine
 
 class TYPE(object):
 	USER, APP = range(2)
@@ -55,6 +56,24 @@ class Helper(object):
 					return "Geolocation failed"
 			else:
 				return "Domain translation disabled"
+
+
+	def processLine(self, inputLine, index):
+		index += 1
+		cleandedLine = filter(None, [x.strip() for x in inputLine.replace('""','"-"').split('"')])
+		ip = cleandedLine[0].split(' ')[0]
+		fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
+		method = cleandedLine[1].split(' ')[0]
+
+		requestUrl = '-' if cleandedLine[1] == '-' else cleandedLine[1].split(' ')[1]
+
+
+
+		code = cleandedLine[2].split(' ')[0]
+		size = cleandedLine[2].split(' ')[1]
+		url = cleandedLine[3]
+		uagent = cleandedLine[4]
+		return FormattedLine(index, ip, fulltime, method, requestUrl, code, size, url, uagent).__dict__
 
 
 	def calculateRatio(self, value, metric):

@@ -49,26 +49,25 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 	if typeProfile == TYPE.USER:
 		requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
+
+		for metric in ProfileUserMongoDB.find_one():
+			if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
+				anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+
+
 	else:
 		requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
+
+
+		for metric in ProfileAppMongoDB.find_one():
+			if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
+				anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
+
+
 
 	# anomaly_TotalConnections(profileRecord, requestRecord)
 	# anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile)
 
-
-
-	for metric in ProfileAppMongoDB.find_one():
-		if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
-			anomaly_GeneralDetect(metric, profileRecord, requestRecord, tmpLastObj)
-
-
-	# anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj)
-	# anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj)
-	# anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj)
-	# anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj)
-	# anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-	# anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj)
-	# anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj)
 
 
 
@@ -92,11 +91,7 @@ def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Detect divergent status ratio """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
 	result = '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj[metric]) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj[metric])
-	if '[OK]' not in result: reportGeneralAlert('Counter exceeded', metric, diff)
-
-
-
-
+	if '[OK]' not in result: reportGeneralAlert('Ratio exceeded', metric, diff)
 
 
 
@@ -105,15 +100,7 @@ def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 def reportGeneralAlert(msg, metric, details):
 	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
 	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
-	print timestamp + '[ALERT] ' + msg + ' (' + str(details) + ')'
-
-
-
-
-def reportAlert(msg, details):
-	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
-	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + ' (' + details + ')'})
-	print timestamp + '[ALERT] ' + msg + ' (' + details + ')'
+	print timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'
 
 
 
@@ -136,71 +123,7 @@ def anomaly_GeoUnknown(profileRecord, requestRecord, tmpLastObj, typeProfile):
 		else:
 			reportAlert('Unknown location', tmpLastObj['location'])
 
-def anomaly_TimeUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in time metric """
 
-	if tmpLastObj['time'] in profileRecord['metric_time']:
-		anomaly_TimeCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_TimeRatio(profileRecord, requestRecord, tmpLastObj)
-	else:
-		reportAlert('Unknown time', tmpLastObj['time'])
-
-def anomaly_AgentUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in agent metric """
-
-	if tmpLastObj['agent'] in profileRecord['metric_agent']:
-		anomaly_AgentCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_AgentRatio(profileRecord, requestRecord, tmpLastObj)
-	else:
-		result = '[ALERT] Connection with unfamiliar user agent ({})'.format(tmpLastObj['agent'])
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_ExtUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in file extension metric """
-
-	if tmpLastObj['ext'] in profileRecord['metric_ext']:
-		anomaly_ExtCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_ExtRatio(profileRecord, requestRecord, tmpLastObj)
-	else:
-		reportAlert('Unknown ext', tmpLastObj['ext'])
-
-def anomaly_RequestUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in request metric """
-
-	if tmpLastObj['request'] in profileRecord['metric_request']:
-		anomaly_RequestCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj)
-	else:
-		reportAlert('Unknown request', tmpLastObj['request'])
-
-def anomaly_StatusUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in status metric """
-
-	if tmpLastObj['status'] in profileRecord['metric_status']:
-		anomaly_StatusCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj)
-	else:
-		reportAlert('Unknown status', tmpLastObj['status'])
-
-def anomaly_MethodUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in method metric """
-
-	if tmpLastObj['method'] in profileRecord['metric_method']:
-		anomaly_MethodCounter(profileRecord, requestRecord, tmpLastObj)
-		anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj)
-	else:
-		reportAlert('Unknown method', tmpLastObj['method'])
-
-def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
-	""" Detect unknowns in parameter metric """
-
-	for param in tmpLastObj['param']:
-		if param in profileRecord['metric_param']:
-			anomaly_ParamCounter(profileRecord, requestRecord, tmpLastObj)
-			anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj)
-		else:
-			result = '[ALERT] Unfamiliar resource requested ({})'.format(param)
-			if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
 
 #################
@@ -231,49 +154,6 @@ def anomaly_GeoCounter (profileRecord, requestRecord, tmpLastObj):
 	result = '[ALERT] Total connections from location has been exceeded ({} | {})'.format(diff, tmpLastObj['location']) if threshold_counter < diff else '[OK] Connections from location safe ({} | {})'.format(diff, tmpLastObj['location'])
 	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
-def anomaly_TimeCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections at specific time """
-	diff = int(requestRecord['metric_time'][tmpLastObj['time']]['counter']) - int(profileRecord['metric_time'][tmpLastObj['time']]['counter'])
-	result = '[ALERT] Total connections at time has been exceeded ({} | {}h)'.format(diff, tmpLastObj['time']) if threshold_counter < diff else '[OK] Connections at time safe ({} | {}h)'.format(diff, tmpLastObj['time'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_AgentCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections with specific agent """
-	diff = int(requestRecord['metric_agent'][tmpLastObj['agent']]['counter']) - int(profileRecord['metric_agent'][tmpLastObj['agent']]['counter'])
-	result = '[ALERT] Total connections from user agent has been exceeded ({} | {})'.format(diff, tmpLastObj['agent']) if threshold_counter < diff else '[OK] Connections from user agent safe ({} | {}h)'.format(diff, tmpLastObj['agent'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_ExtCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections to specific file types """
-	diff = int(requestRecord['metric_ext'][tmpLastObj['ext']]['counter']) - int(profileRecord['metric_ext'][tmpLastObj['ext']]['counter'])
-	result = '[ALERT] Total requests for filetype has been exceeded ({} | {})'.format(diff, tmpLastObj['ext']) if threshold_counter < diff else '[OK] Connections for filetype safe ({} | {})'.format(diff, tmpLastObj['ext'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_RequestCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections to specific resource file """
-	diff = int(requestRecord['metric_request'][tmpLastObj['request']]['counter']) - int(profileRecord['metric_request'][tmpLastObj['request']]['counter'])
-	result = '[ALERT] Total requests for resource has been exceeded ({} | {})'.format(diff, tmpLastObj['request']) if threshold_counter < diff else '[OK] Requests for resource safe ({} | {})'.format(diff, tmpLastObj['request'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_StatusCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections to specific resource file """
-	diff = int(requestRecord['metric_status'][tmpLastObj['status']]['counter']) - int(profileRecord['metric_status'][tmpLastObj['status']]['counter'])
-	result = '[ALERT] More status than usual ({} | {})'.format(diff, tmpLastObj['status']) if threshold_counter < diff else '[OK] Status for resource safe ({} | {})'.format(diff, tmpLastObj['status'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_MethodCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections to specific resource file """
-	diff = int(requestRecord['metric_method'][tmpLastObj['method']]['counter']) - int(profileRecord['metric_method'][tmpLastObj['method']]['counter'])
-	result = '[ALERT] More methods than usual ({} | {})'.format(diff, tmpLastObj['method']) if threshold_counter < diff else '[OK] Methods for resource safe ({} | {})'.format(diff, tmpLastObj['method'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_ParamCounter (profileRecord, requestRecord, tmpLastObj):
-	""" Detect to many connections on specific querystring parameter """
-	for param in tmpLastObj['param']:
-		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		result = '[ALERT] Total requests with parameter has been exceeded ({} | {})'.format(diff, param) if threshold_counter < diff else '[OK] Connections with parameter safe ({} | {})'.format(diff, param)
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
 
 
 ################
@@ -286,68 +166,7 @@ def anomaly_GeoRatio(profileRecord, requestRecord, tmpLastObj):
 	result = '[OK] Ratio geolocation safe ({} | {})'.format(diff, tmpLastObj['location']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio geolocation has been exceeded ({} | {})'.format(diff, tmpLastObj['location'])
 	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
-def anomaly_TimeRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent time ratio """
-	diff = float(requestRecord['metric_time'][tmpLastObj['time']]['ratio']) - float(profileRecord['metric_time'][tmpLastObj['time']]['ratio'])
-	result = '[OK] Ratio time safe ({} | {}h)'.format(diff, tmpLastObj['time']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio time has been exceeded ({} | {}h)'.format(diff, tmpLastObj['time'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
 
-def anomaly_AgentRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent agent ratio """
-	diff = float(requestRecord['metric_agent'][tmpLastObj['agent']]['ratio']) - float(profileRecord['metric_agent'][tmpLastObj['agent']]['ratio'])
-	result = '[OK] Ratio user agent safe ({} | {})'.format(diff, tmpLastObj['agent']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio user agent has been exceeded ({} | {})'.format(diff, tmpLastObj['agent'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_ExtRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent file type ratio """
-	diff = float(requestRecord['metric_ext'][tmpLastObj['ext']]['ratio']) - float(profileRecord['metric_ext'][tmpLastObj['ext']]['ratio'])
-	result = '[OK] Ratio file extension safe ({} | {})'.format(diff, tmpLastObj['ext']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio file extension has been exceeded ({} | {})'.format(diff, tmpLastObj['ext'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_RequestRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent request ratio """
-	diff = float(requestRecord['metric_request'][tmpLastObj['request']]['ratio']) - float(profileRecord['metric_request'][tmpLastObj['request']]['ratio'])
-	result = '[OK] Ratio resource requests safe ({} | {})'.format(diff, tmpLastObj['request']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, tmpLastObj['request'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_StatusRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent status ratio """
-	diff = float(requestRecord['metric_status'][tmpLastObj['status']]['ratio']) - float(profileRecord['metric_status'][tmpLastObj['status']]['ratio'])
-	result = '[OK] Ratio status safe ({} | {})'.format(diff, tmpLastObj['status']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio status has been exceeded ({} | {})'.format(diff, tmpLastObj['status'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_MethodRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent method ratio """
-	diff = float(requestRecord['metric_method'][tmpLastObj['method']]['ratio']) - float(profileRecord['metric_method'][tmpLastObj['method']]['ratio'])
-	result = '[OK] Ratio method safe ({} | {})'.format(diff, tmpLastObj['method']) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio method has been exceeded ({} | {})'.format(diff, tmpLastObj['method'])
-	if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-def anomaly_ParamRatio(profileRecord, requestRecord, tmpLastObj):
-	""" Detect divergent param ratio """
-	for param in tmpLastObj['param']:
-		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		result = '[OK] Ratio resource requests safe ({} | {})'.format(diff, param) if -threshold_ratio <= diff <= threshold_ratio else '[ALERT] Ratio resource requests has been exceeded ({} | {})'.format(diff, param)
-		if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
-
-
-
-
-def processLine(inputLine, index):
-	index += 1
-	cleandedLine = filter(None, [x.strip() for x in inputLine.replace('""','"-"').split('"')])
-	ip = cleandedLine[0].split(' ')[0]
-	fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
-	method = cleandedLine[1].split(' ')[0]
-
-	requestUrl = '-' if cleandedLine[1] == '-' else cleandedLine[1].split(' ')[1]
-
-
-
-	code = cleandedLine[2].split(' ')[0]
-	size = cleandedLine[2].split(' ')[1]
-	url = cleandedLine[3]
-	uagent = cleandedLine[4]
-	return FormattedLine(index, ip, fulltime, method, requestUrl, code, size, url, uagent).__dict__
 
 
 ##############
@@ -369,7 +188,7 @@ if __name__ == '__main__':
 				print inputLine
 
 				#### Create line object and insert it in mongodb
-				lineObj = processLine(inputLine, index)
+				lineObj = helperObj.processLine(inputLine, index)
 
 
 				## App filtering
@@ -385,14 +204,14 @@ if __name__ == '__main__':
 					print 'Not profiled page'
 
 
-				# ## User filtering
-				# print '\n----- User analysis -----'
-				# tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
+				## User filtering
+				print '\n----- User analysis -----'
+				tmpLastObj = helperObj.processLineCombined(TYPE.USER, SCRIPT.FIREWALL, lineObj, options)
 
-				# if ProfileUserMongoDB.find({'_id': lineObj['ip']}).count() > 0:
-				# 	startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
-				# else:
-				# 	print 'Not profiled user'
+				if ProfileUserMongoDB.find({'_id': lineObj['ip']}).count() > 0:
+					startAnomalyDetection(lineObj, ProfileUserMongoDB.find_one({'_id': lineObj['ip']}), tmpLastObj, TYPE.USER)
+				else:
+					print 'Not profiled user'
 
 
 				print '===== Analysis Finished =====\n\n\n\n\n'
