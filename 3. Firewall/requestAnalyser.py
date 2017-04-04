@@ -1,4 +1,4 @@
-import datetime
+import datetime, time
 from pymongo import MongoClient
 
 import sys
@@ -52,6 +52,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 		if typeProfile == TYPE.USER:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
 			anomaly_TotalConnections(profileRecord, requestRecord)
+			anomaly_ParamUnknown(profileRecord, requestRecord)
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -60,9 +61,12 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 		else:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 			anomaly_TotalConnections(profileRecord, requestRecord)
+			anomaly_ParamUnknown(profileRecord, requestRecord)
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
+
+
 
 	else:
 		print 'IP IS BLACKLISTED'
@@ -78,7 +82,7 @@ def anomaly_IpStatic(ip):
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	if threshold_counter < diff reportGeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
+	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
 
 
 def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
@@ -87,26 +91,63 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
 		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
-		reportGeneralAlert('Unknown found in', metric, tmpLastObj[metric])
+		report_GeneralAlert('Unknown found in', metric, tmpLastObj[metric])
 
 
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive counter on given metric """
 	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
-	if threshold_counter < diff: reportGeneralAlert('Counter exceeded', metric, diff)
+	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', metric, diff)
 
 
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if -threshold_ratio <= diff <= threshold_ratio: reportGeneralAlert('Ratio exceeded', metric, diff)
+	if -threshold_ratio <= diff <= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff)
 
 
-def reportGeneralAlert(msg, metric, details):
+
+def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
+	""" Detect unknowns in parameter metric """
+
+	for param in tmpLastObj['metric_param']:
+		if param in profileRecord['metric_param']:
+			anomaly_ParamAnomaly(profileRecord, requestRecord, tmpLastObj)
+		else:
+			result = '[ALERT] Unfamiliar resource requested ({})'.format(param)
+			if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+
+
+def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
+	""" Detect to many connections on specific querystring parameter """
+	for param in tmpLastObj['metric_param']:
+		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
+		if threshold_counter < diff: MessageMongoDB.insert_one({'message': result})
+
+		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
+		if -threshold_ratio <= diff <= threshold_ratio: MessageMongoDB.insert_one({'message': result})
+
+
+
+
+
+def report_GeneralAlert(msg, metric, details):
 	""" Add timestamp and report incident to the firewall """
 	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
 	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
 	print timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -117,10 +158,29 @@ def reportGeneralAlert(msg, metric, details):
 ##############
 
 if __name__ == '__main__':
-	print 'Firewall started correctly'
+	print('   ,_____ ,')
+	print('  ,._ ,_.  |')
+	print(' j `-`     |')
+	print(' |o_, o    |')
+	print('.`_y_`-,`   !')
+	print('|/   `, `._ `-,')
+	print('|_     \   _.`*|')
+	print('  >--,-``-`*_*```---.')
+	print('  |\_* _*`-`         `')
+	print(' /        WAF         |')
+	print(' \. By Matthias Maes  /')
+	print('  ``._     /   )     /')
+	print('   \  |`-,-|  /c-`7 /')
+	print('    ) \ (_,| |   / (_')
+	print('   ((_/   ((_;)  \_)))')
+	print('===========================')
 
-	import time
+
+	print '\n\n\n - [LOG] [OK] Firewall started correctly...'
+
 	with open('C:/wamp64/logs/access.log') as fileobject:
+
+		print ' - [LOG] [OK] Ready to start processing requests...'
 		fileobject.seek(0,2)
 
 		while True:
