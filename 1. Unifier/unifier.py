@@ -3,9 +3,15 @@ from pymongo import MongoClient
 from optparse import OptionParser
 
 
+
+
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
 from formattedLine import FormattedLine
+from helper import Helper, TYPE, SCRIPT
+
+#### Init helper object ####
+helperObj = Helper()
 
 
 #### Init options ####
@@ -51,27 +57,7 @@ def formatLine(lines, index):
 
 	for line in lines:
 		try:
-
-			#### Repace empyt parameters with -, in order to not confus the split ####
-			cleandedLine = filter(None, [x.strip() for x in line.replace('""','"-"').split('"')])
-
-			#### Set all required vars ####
-			ip = cleandedLine[0].split(' ')[0]
-
-			fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
-
-			method = cleandedLine[1].split(' ')[0]
-			requestUrl = cleandedLine[1].split(' ')[1]
-			code = cleandedLine[2].split(' ')[0]
-			size = cleandedLine[2].split(' ')[1]
-			url = cleandedLine[3]
-			uagent = cleandedLine[4]
-
-			#### Create line object and insert it in mongodb
-			lineObj = FormattedLine(index, ip, fulltime, method, requestUrl, code, size, url, uagent)
-			MongoDB.insert_one(lineObj.__dict__)
-			index += 1
-
+			MongoDB.insert_one(helperObj.processLine(line, index))
 		except Exception as e:
 			print 'Following error occured: {} on line {}'.format(line, e)
 			print e
