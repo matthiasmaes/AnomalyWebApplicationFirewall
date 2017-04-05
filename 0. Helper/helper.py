@@ -180,7 +180,14 @@ class Helper(object):
 
 		#### Insert record if it doesn't exists ####
 		if self.OutputMongoDB.find({'_id': key}).count() == 0:
-			self.OutputMongoDB.update_one({'_id': key}, {'$set': {'metric_param': {}}} , upsert=True)
+			try:
+				self.OutputMongoDB.update_one({'_id': key}, {'$set': {'metric_param': {}}} , upsert=True)
+			except Exception as e:
+				if 'E11000' in e.message:
+					pass
+				else:
+					raise e
+			
 
 
 
