@@ -4,7 +4,6 @@ from pymongo import MongoClient
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
 from helper import Helper, TYPE, SCRIPT
-from formattedLine import FormattedLine
 
 
 #### Init helper object ####
@@ -52,7 +51,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 		if typeProfile == TYPE.USER:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
 			anomaly_TotalConnections(profileRecord, requestRecord)
-			anomaly_ParamUnknown(profileRecord, requestRecord)
+			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -61,7 +60,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 		else:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 			anomaly_TotalConnections(profileRecord, requestRecord)
-			anomaly_ParamUnknown(profileRecord, requestRecord)
+			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -122,10 +121,10 @@ def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections on specific querystring parameter """
 	for param in tmpLastObj['metric_param']:
 		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		if threshold_counter < diff: MessageMongoDB.insert_one({'message': result})
+		if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'metric_param', diff)
 
 		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		if -threshold_ratio <= diff <= threshold_ratio: MessageMongoDB.insert_one({'message': result})
+		if -threshold_ratio <= diff <= threshold_ratio: report_GeneralAlert('Param exceeded', 'metric_param', diff)
 
 
 

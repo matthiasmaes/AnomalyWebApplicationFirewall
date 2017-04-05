@@ -7,8 +7,7 @@ from optparse import OptionParser
 
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
-from formattedLine import FormattedLine
-from helper import Helper, TYPE, SCRIPT
+from helper import Helper
 
 #### Init helper object ####
 helperObj = Helper()
