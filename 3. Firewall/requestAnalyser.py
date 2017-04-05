@@ -158,22 +158,24 @@ def report_GeneralAlert(msg, metric, details):
 ##############
 
 if __name__ == '__main__':
-	print('   ,_____ ,')
-	print('  ,._ ,_.  |')
-	print(' j `-`     |')
-	print(' |o_, o    |')
-	print('.`_y_`-,`   !')
-	print('|/   `, `._ `-,')
-	print('|_     \   _.`*|')
-	print('  >--,-``-`*_*```---.')
-	print('  |\_* _*`-`         `')
-	print(' /        WAF         |')
-	print(' \. By Matthias Maes  /')
-	print('  ``._     /   )     /')
-	print('   \  |`-,-|  /c-`7 /')
-	print('    ) \ (_,| |   / (_')
-	print('   ((_/   ((_;)  \_)))')
-	print('===========================')
+
+
+	print '   ,_____ ,'
+	print '  ,._ ,_.  |'
+	print ' j `-`     |'
+	print ' |o_, o    |'
+	print '.`_y_`-,`   !'
+	print '|/   `, `._ `-,'
+	print '|_     \   _.`*|'
+	print '  >--,-``-`*_*```---.'
+	print '  |\_* _*`-`         `'
+	print ' /        WAF         |'
+	print ' \. By Matthias Maes  /'
+	print '  ``._     /   )     /'
+	print '   \  |`-,-|  /c-`7 /'
+	print '    ) \ (_,| |   / (_'
+	print '   ((_/   ((_;)  \_)))'
+	print '==========================='
 
 
 	print '\n\n\n - [LOG] [OK] Firewall started correctly...'

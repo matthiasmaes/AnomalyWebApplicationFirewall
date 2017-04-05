@@ -29,8 +29,8 @@ class Helper(object):
 		parser = OptionParser()
 		parser.add_option("-p", "--ping", action="store_true", dest="ping", default=True, help="Try to resolve originating domains to ip for geolocation")
 		parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-		parser.add_option("-t", "--threads", action="store", dest="threads", default="1", help="Amout of threats that can be used")
-		parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="5", help="Max lines per thread")
+		parser.add_option("-t", "--threads", action="store", dest="threads", default="12", help="Amout of threats that can be used")
+		parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="100", help="Max lines per thread")
 		parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="TEST", help="Input via mongo")
 		parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 		parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
@@ -64,11 +64,7 @@ class Helper(object):
 		ip = cleandedLine[0].split(' ')[0]
 		fulltime = cleandedLine[0].split(' ')[3].replace('[', '') + ' ' +  cleandedLine[0].split(' ')[4].replace(']', '')
 		method = cleandedLine[1].split(' ')[0]
-
 		requestUrl = '-' if cleandedLine[1] == '-' else cleandedLine[1].split(' ')[1]
-
-
-
 		code = cleandedLine[2].split(' ')[0]
 		size = cleandedLine[2].split(' ')[1]
 		url = cleandedLine[3]
@@ -165,6 +161,7 @@ class Helper(object):
 		if inputLine is None:
 			return
 
+			
 		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
 		urlWithoutQuery = self.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
 		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['url'])]
