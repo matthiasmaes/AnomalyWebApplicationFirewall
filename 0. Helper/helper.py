@@ -29,8 +29,8 @@ class Helper(object):
 		parser = OptionParser()
 		parser.add_option("-p", "--ping", action="store_true", dest="ping", default=True, help="Try to resolve originating domains to ip for geolocation")
 		parser.add_option("-d", "--debug", action="store_true", dest="debug", default=False, help="Show debug messages")
-		parser.add_option("-t", "--threads", action="store", dest="threads", default="12", help="Amout of threats that can be used")
-		parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="100", help="Max lines per thread")
+		parser.add_option("-t", "--threads", action="store", dest="threads", default="2", help="Amout of threats that can be used")
+		parser.add_option("-x", "--lines", action="store", dest="linesPerThread", default="2", help="Max lines per thread")
 		parser.add_option("-m", "--mongo", action="store", dest="inputMongo", default="TEST", help="Input via mongo")
 		parser.add_option("-s", "--start", action="store", dest="startIndex", default="0", help="Start index for profiling")
 		parser.add_option("-e", "--end", action="store", dest="endindex", default="0", help="End index for profiling")
@@ -56,6 +56,12 @@ class Helper(object):
 					return "Geolocation failed"
 			else:
 				return "Domain translation disabled"
+
+	def monthAbbrToInt(self, abbr):
+		return{
+		        'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8,
+		        'Sep' : 9, 'Oct' : 10,'Nov' : 11,'Dec' : 12
+		}[abbr]
 
 
 	def processLine(self, inputLine, index):
@@ -159,16 +165,24 @@ class Helper(object):
 			otherKey = inputLine['ip'].replace('.','_')
 
 		if inputLine is None:
+			print '--- NONE ---'
 			return
 
-			
-		timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+		try:
+			timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
+		except Exception as e:
+			split = inputLine['fulltime'].replace(' ',':').replace('/',':').split(':')
+
+			timestamp = datetime.datetime(int(split[2]), self.monthAbbrToInt(split[1]) , int(split[0]), int(split[3]), int(split[4]), int(split[5]), 0)
+
 		urlWithoutQuery = self.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
 		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['url'])]
 
 		#### Insert record if it doesn't exists ####
 		if self.OutputMongoDB.find({'_id': key}).count() == 0:
-			self.OutputMongoDB.insert_one({'_id': key, 'metric_param' : {} })
+			self.OutputMongoDB.update_one({'_id': key}, {'$set': {'metric_param': {}}} , upsert=True)
+
+
 
 		#### Setup bulk stream ####
 		bulk = self.OutputMongoDB.initialize_unordered_bulk_op()
@@ -225,12 +239,12 @@ class Helper(object):
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
+
 		#### Execute bulk statement ####
 		try:
 			bulk.execute()
 		except Exception as e:
 			print e.details
-
 
 
 		#### See self.py for details on functions ####
@@ -254,8 +268,6 @@ class Helper(object):
 		if script == SCRIPT.FIREWALL:
 			return {
 				'param': queryString,
-
-
 
 				'metric_method': inputLine['method'],
 				'metric_day': timestamp.strftime("%A"),

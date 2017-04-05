@@ -54,7 +54,6 @@ activeWorkers = 0
 
 def formatLine(lines, index):
 	""" Format lines into unified object """
-	print index
 	for line in lines:
 		try:
 			MongoDB.insert_one(helperObj.processLine(line, index))

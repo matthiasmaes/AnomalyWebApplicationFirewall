@@ -4,6 +4,8 @@ import threading
 import math
 from pymongo import MongoClient
 
+
+
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
 from helper import Helper, TYPE, SCRIPT
@@ -80,12 +82,15 @@ endRange = int(options.linesPerThread)
 intLinesPerThread = int(options.linesPerThread)
 loops = int(math.ceil(float(diffLines) / float(intLinesPerThread)))
 
+loops += 2
+
 try:
 	for index in xrange(0, loops):
 
 		#### Hold until worker is free ####
 		while str(activeWorkers) == str(options.threads):
 			pass
+
 
 		#### Start of worker ####
 		activeWorkers += 1
