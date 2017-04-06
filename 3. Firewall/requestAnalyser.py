@@ -18,6 +18,8 @@ ProfileUserMongoDB = MongoClient().profile_user['TEST']
 MessageMongoDB = MongoClient().engine_log.firewall_messages
 
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
+SpamAgentMongoDB = MongoClient().config_static.profile_extended_spam
+
 helperObj.BotMongoDB = MongoClient().config_static.profile_bots
 
 
@@ -46,7 +48,7 @@ index = 0
 def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	""" Start anomaly detection process """
 
-	if (anomaly_IpStatic(packet['ip'])):
+	if (anomaly_StaticChecks(packet)):
 
 		if typeProfile == TYPE.USER:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
@@ -75,9 +77,9 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 
-def anomaly_IpStatic(ip):
+def anomaly_StaticChecks(packet):
 	""" Check static blocklist with ips """
-	return IPReputationMongoDB.find_one({'_id' : ip}) == None
+	return IPReputationMongoDB.find_one({'_id' : packet['ip']}) == None and SpamAgentMongoDB.find_one({'string' : packet['uagent']}) == None
 
 
 def anomaly_TotalConnections (profileRecord, requestRecord):
