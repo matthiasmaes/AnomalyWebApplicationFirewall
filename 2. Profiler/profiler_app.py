@@ -4,11 +4,19 @@ import threading
 import math
 from pymongo import MongoClient
 
-
-
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
 from helper import Helper, TYPE, SCRIPT
+
+
+
+
+
+print "  ,---.  ,------. ,------.     ,------. ,------.  ,-----. ,------."
+print " /  O  \ |  .--. '|  .--. '    |  .--. '|  .--. ''  .-.  '|  .---'"
+print "|  .-.  ||  '--' ||  '--' |    |  '--' ||  '--'.'|  | |  ||  `--, "
+print "|  | |  ||  | --' |  | --'     |  | --' |  |\  \ '  '-'  '|  |`   "
+print "`--' `--'`--'     `--'         `--'     `--' '--' `-----' `--'    "
 
 
 #### Init global vars ####

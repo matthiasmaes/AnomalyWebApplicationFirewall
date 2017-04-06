@@ -52,6 +52,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
+
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -61,6 +62,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
+
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -81,6 +83,7 @@ def anomaly_IpStatic(ip):
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
+	print diff
 	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
 
 

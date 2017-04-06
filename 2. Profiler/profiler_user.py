@@ -9,6 +9,13 @@ sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
 from helper import Helper, TYPE, SCRIPT
 
 
+print ",--. ,--. ,---.  ,------.,------.     ,------. ,------.  ,-----. ,------."
+print "|  | |  |'   .-' |  .---'|  .--. '    |  .--. '|  .--. ''  .-.  '|  .---'"
+print "|  | |  |`.  `-. |  `--, |  '--'.'    |  '--' ||  '--'.'|  | |  ||  `--, "
+print "'  '-'  '.-'    ||  `---.|  |\  \     |  | --' |  |\  \ '  '-'  '|  |`   "
+print " `-----' `-----' `------'`--' '--'    `--'     `--' '--' `-----' `--'    "
+
+
 #### Init global vars ####
 initTime = str('%02d' % datetime.datetime.now().hour) + ':' +  str('%02d' % datetime.datetime.now().minute) + ':' +  str('%02d' % datetime.datetime.now().second)
 startTime = datetime.datetime.now()
