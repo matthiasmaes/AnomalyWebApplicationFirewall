@@ -83,7 +83,6 @@ def anomaly_IpStatic(ip):
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	print diff
 	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
 
 
@@ -105,7 +104,7 @@ def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if -threshold_ratio <= diff <= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff)
+	if -threshold_ratio >= diff >= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff)
 
 
 
@@ -177,6 +176,7 @@ if __name__ == '__main__':
 	print '   \  |`-,-|  /c-`7 /'
 	print '    ) \ (_,| |   / (_'
 	print '   ((_/   ((_;)  \_)))'
+	print '==========================='
 	print '==========================='
 
 
