@@ -139,23 +139,11 @@ class Helper(object):
 			delta = time2 - time1
 
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
-
-
 				self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_timespent', delta.total_seconds())
 
 
-
-
-
-
-
-
 	def calulateAvgSize(self, identifier, otherIdentifier, size):
-
 		self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_size', int(size))
-
-
-
 
 
 	def calculateNewAverageDeviance(self, identifier, otherIdentifier, metric, newVal):
@@ -167,11 +155,6 @@ class Helper(object):
 		try:
 			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
 			newAvg = (orgAvg * (counter - 1) + newVal) / counter
-			print 'COUNTER: ', counter
-			print 'ORG AVG: ', orgAvg
-			print 'NEW AVG: ', newAvg
-			print 'NEW VALUE', newVal
-			print '--------------'
 
 		except KeyError:
 			newAvg = newVal
@@ -182,7 +165,6 @@ class Helper(object):
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.average': int(newAvg)}})
 
 
-
 		# DEVIANCE #
 		try:
 			orgDeviation = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']
@@ -191,12 +173,6 @@ class Helper(object):
 			newDeviation = 0
 		finally:
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': int(newDeviation)}})
-
-
-
-
-
-
 
 
 
