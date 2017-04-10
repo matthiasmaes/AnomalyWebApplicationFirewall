@@ -2,6 +2,7 @@ import IP2Location
 import dns.resolver
 import string
 import datetime
+import math
 
 from collections import OrderedDict
 from optparse import OptionParser
@@ -138,6 +139,9 @@ class Helper(object):
 
 			delta = time2 - time1
 
+
+			print delta.total_seconds()
+
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
 				self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_timespent', delta.total_seconds())
 
@@ -149,7 +153,6 @@ class Helper(object):
 	def calculateNewAverageDeviance(self, identifier, otherIdentifier, metric, newVal):
 
 		counter = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_conn'][otherIdentifier]['counter']
-
 
 		# AVERAGE #
 		try:
@@ -167,12 +170,12 @@ class Helper(object):
 
 		# DEVIANCE #
 		try:
-			orgDeviation = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']
+			orgDeviation = math.pow((self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']),2)
 			newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
 		except KeyError:
 			newDeviation = 0
 		finally:
-			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': int(newDeviation)}})
+			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': math.sqrt(int(newDeviation))}})
 
 
 
@@ -208,8 +211,6 @@ class Helper(object):
 					pass
 				else:
 					raise e
-			
-
 
 
 		#### Setup bulk stream ####
