@@ -175,7 +175,12 @@ class Helper(object):
 		# DEVIANCE #
 		try:
 			orgDeviation = math.pow((self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']),2)
-			newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
+			# STEEKPROEF
+			# newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
+
+			# POPULATIE
+			newDeviation = (((counter-1) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter)
+
 		except KeyError:
 			newDeviation = 0
 		finally:
