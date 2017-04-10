@@ -166,10 +166,18 @@ class Helper(object):
 		# AVERAGE #
 		try:
 			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
-			# newAvg = orgAvg + ((newVal - orgAvg) / counter)
-			newAvg = (orgAvg * counter + newVal) / (counter + 1)
+			newAvg = (orgAvg * (counter - 1) + newVal) / counter
+			print 'COUNTER: ', counter
+			print 'ORG AVG: ', orgAvg
+			print 'NEW AVG: ', newAvg
+			print 'NEW VALUE', newVal
+			print '--------------'
+
 		except KeyError:
 			newAvg = newVal
+
+		except Exception as e:
+			print e
 		finally:
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.average': int(newAvg)}})
 
