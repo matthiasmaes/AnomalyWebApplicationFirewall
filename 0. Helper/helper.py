@@ -157,6 +157,25 @@ class Helper(object):
 
 		counter = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_conn'][otherIdentifier]['counter']
 
+		# MIN #
+		try:
+			orgMin =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['min']
+			newMin = newVal if newVal < orgMin else orgMin
+		except KeyError:
+			newMin = newVal
+		finally:
+			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.min': int(newMin)}})
+
+		# MAX #
+		try:
+			orgMax =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['max']
+			newMax = newVal if newVal > orgMax else orgMax
+		except KeyError:
+			newMax = newVal
+		finally:
+			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.max': int(newMax)}})
+
+
 		# AVERAGE #
 		try:
 			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
