@@ -153,6 +153,22 @@ class Helper(object):
 
 
 
+	def calulateAvgSize(self, identifier, url, size):
+		counter = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_conn'][url]['counter']
+		size = int(size)
+		try:
+			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_size'][url]
+			newAvg = orgAvg + ((size - orgAvg) / counter)
+		except KeyError:
+			newAvg = size
+		finally:
+			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {'metric_size.' + url : int(newAvg)}})
+
+
+
+
+
+
 
 
 	def processLineCombined(self, typeProfile, script, inputLine, options):
@@ -256,6 +272,9 @@ class Helper(object):
 
 		#### See self.py for details on functions ####
 		self.makeTimeline(key, otherKey)
+		self.calulateAvgSize(key, otherKey, inputLine['size'])
+
+
 		self.calculateRatio(key, 'metric_agent')
 		self.calculateRatio(key, 'metric_time')
 		self.calculateRatio(key, 'metric_day')
