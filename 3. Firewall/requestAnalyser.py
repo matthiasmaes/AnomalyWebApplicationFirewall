@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
-from helper import Helper, TYPE, SCRIPT
+from helper import Helper, TYPE, SCRIPT, SEVERITY
 
 
 #### Init helper object ####
@@ -72,7 +72,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 	else:
-		print 'IP IS BLACKLISTED'
+		report_GeneralAlert('Static list block', 'ip/uagent', diff, SEVERITY.CRITICAL)
 
 
 
@@ -85,7 +85,7 @@ def anomaly_StaticChecks(packet):
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'general_TotalConnections', diff)
+	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'general_TotalConnections', diff, SEVERITY.LOW)
 
 
 def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
@@ -94,19 +94,19 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
 		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
-		report_GeneralAlert('Unknown found in', metric, tmpLastObj[metric])
+		report_GeneralAlert('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH)
 
 
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive counter on given metric """
 	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
-	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', metric, diff)
+	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', metric, diff, SEVERITY.LOW)
 
 
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if -threshold_ratio >= diff >= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff)
+	if -threshold_ratio >= diff >= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff, SEVERITY.LOW)
 
 
 
@@ -117,27 +117,29 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 		if param in profileRecord['metric_param']:
 			anomaly_ParamAnomaly(profileRecord, requestRecord, tmpLastObj)
 		else:
-			result = '[ALERT] Unfamiliar resource requested ({})'.format(param)
-			if '[OK]' not in result: MessageMongoDB.insert_one({'message': result})
+			report_GeneralAlert('Unknown param', 'metric_param', param, SEVERITY.HIGH)
 
 
 def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections on specific querystring parameter """
 	for param in tmpLastObj['metric_param']:
 		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'metric_param', diff)
+		if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'metric_param', diff, SEVERITY.LOW)
 
 		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		if -threshold_ratio <= diff <= threshold_ratio: report_GeneralAlert('Param exceeded', 'metric_param', diff)
+		if -threshold_ratio <= diff <= threshold_ratio: report_GeneralAlert('Param exceeded', 'metric_param', diff, SEVERITY.LOW)
 
 
 
 
 
-def report_GeneralAlert(msg, metric, details):
+
+
+
+def report_GeneralAlert(msg, metric, details, severity):
 	""" Add timestamp and report incident to the firewall """
 	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
-	MessageMongoDB.insert_one({'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
+	MessageMongoDB.insert_one({'severity': severity, 'timestamp': timestamp, 'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
 	print timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'
 
 

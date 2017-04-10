@@ -14,6 +14,9 @@ class TYPE(object):
 class SCRIPT(object):
 	PROFILER, FIREWALL = range(2)
 
+class SEVERITY(object):
+	CRITICAL, HIGH, LOW = range(3)
+
 
 class Helper(object):
 
@@ -164,6 +167,7 @@ class Helper(object):
 
 		except Exception as e:
 			print e
+
 		finally:
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.average': int(newAvg)}})
 
