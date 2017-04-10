@@ -124,8 +124,8 @@ class Helper(object):
 		return filetype
 
 
-	def makeTimeline(self, inputLine, value):
-		timelineDict = self.OutputMongoDB.find_one({'_id' : inputLine})['general_timeline']
+	def makeTimeline(self, identifier, otherIdentifier):
+		timelineDict = self.OutputMongoDB.find_one({'_id' : identifier})['general_timeline']
 		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
 		for event in timelineList:
@@ -139,30 +139,51 @@ class Helper(object):
 			delta = time2 - time1
 
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
-				counter = self.OutputMongoDB.find_one({ '_id' : inputLine })['metric_conn'][value]['counter']
-				try:
-					orgAvg = self.OutputMongoDB.find_one({ '_id' : inputLine })['metric_timespent'][value]
-					newAvg = orgAvg + ((delta.total_seconds() - orgAvg) / counter)
-				except KeyError:
-					newAvg = delta.total_seconds()
-				finally:
-					self.OutputMongoDB.update_one({ '_id' : inputLine }, { '$set' : {'metric_timespent.' + value : int(newAvg)}})
+
+
+				self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_timespent', delta.total_seconds())
 
 
 
 
 
 
-	def calulateAvgSize(self, identifier, url, size):
-		counter = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_conn'][url]['counter']
-		size = int(size)
+
+
+	def calulateAvgSize(self, identifier, otherIdentifier, size):
+
+		self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_size', int(size))
+
+
+
+
+
+	def calculateNewAverageDeviance(self, identifier, otherIdentifier, metric, newVal):
+
+		counter = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_conn'][otherIdentifier]['counter']
+
+
+		# AVERAGE #
 		try:
-			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_size'][url]
-			newAvg = orgAvg + ((size - orgAvg) / counter)
+			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
+			# newAvg = orgAvg + ((newVal - orgAvg) / counter)
+			newAvg = (orgAvg * counter + newVal) / (counter + 1)
 		except KeyError:
-			newAvg = size
+			newAvg = newVal
 		finally:
-			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {'metric_size.' + url : int(newAvg)}})
+			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.average': int(newAvg)}})
+
+
+
+		# DEVIANCE #
+		try:
+			orgDeviation = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']
+			newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
+		except KeyError:
+			newDeviation = 0
+		finally:
+			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': int(newDeviation)}})
+
 
 
 
