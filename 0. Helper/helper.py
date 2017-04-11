@@ -18,6 +18,23 @@ class SEVERITY(object):
 	CRITICAL, HIGH, LOW = range(3)
 
 
+class FirewallAlarmException(Exception):
+	def __init__(self, message, metric, details, severity, mongodb):
+		self.timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
+		self.metric = str(metric)
+		self.details = str(details)
+		self.severity = severity
+
+		mongodb.insert_one(self.__dict__)
+		print self
+
+	def __str__(self):
+		return str(self.timestamp) + '[' + str(self.severity) + '] ' + str(self.details) + ' (' + str(self.metric) + ', ' + str(self.details) + ')'
+
+
+
+
+
 class Helper(object):
 
 	def __init__(self):
@@ -148,7 +165,10 @@ class Helper(object):
 
 
 	def calulateAvgSize(self, identifier, otherIdentifier, size):
-		self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_size', int(size))
+		try:
+			self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_size', int(size))
+		except ValueError:
+			pass
 
 
 	def calculateNewAverageDeviance(self, identifier, otherIdentifier, metric, newVal):
@@ -156,52 +176,52 @@ class Helper(object):
 		counter = self.OutputMongoDB.find_one({ '_id' : identifier })['metric_conn'][otherIdentifier]['counter']
 
 		# MIN #
-		try:
-			orgMin =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['min']
-			newMin = newVal if newVal < orgMin else orgMin
-		except KeyError:
-			newMin = newVal
-		finally:
-			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.min': int(newMin)}})
+		# try:
+		# 	orgMin =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['min']
+		# 	newMin = newVal if newVal < orgMin else orgMin
+		# except KeyError:
+		# 	newMin = newVal
+		# finally:
+		# 	self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.min': int(newMin)}})
 
 		# MAX #
-		try:
-			orgMax =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['max']
-			newMax = newVal if newVal > orgMax else orgMax
-		except KeyError:
-			newMax = newVal
-		finally:
-			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.max': int(newMax)}})
+		# try:
+		# 	orgMax =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['max']
+		# 	newMax = newVal if newVal > orgMax else orgMax
+		# except KeyError:
+		# 	newMax = newVal
+		# finally:
+		# 	self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.max': int(newMax)}})
 
 
 		# AVERAGE #
-		try:
-			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
-			newAvg = (orgAvg * (counter - 1) + newVal) / counter
+		# try:
+		# 	orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
+		# 	newAvg = (orgAvg * (counter - 1) + newVal) / counter
 
-		except KeyError:
-			newAvg = newVal
+		# except KeyError:
+		# 	newAvg = newVal
 
-		except Exception as e:
-			print e
+		# except Exception as e:
+		# 	print e
 
-		finally:
-			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.average': int(newAvg)}})
+		# finally:
+		# 	self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.average': int(newAvg)}})
 
 
 		# DEVIANCE #
-		try:
-			orgDeviation = math.pow((self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']),2)
-			# STEEKPROEF
-			# newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
+		# try:
+		# 	orgDeviation = math.pow((self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']),2)
+		# 	# STEEKPROEF
+		# 	# newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
 
-			# POPULATIE
-			newDeviation = (((counter-1) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter)
+		# 	# POPULATIE
+		# 	newDeviation = (((counter-1) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter)
 
-		except KeyError:
-			newDeviation = 0
-		finally:
-			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': math.sqrt(int(newDeviation))}})
+		# except KeyError:
+		# 	newDeviation = 0
+		# finally:
+		# 	self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': math.sqrt(int(newDeviation))}})
 
 
 
@@ -338,5 +358,6 @@ class Helper(object):
 				'metric_time': timestamp.strftime("%H"),
 				'metric_ext': self.getFileType(inputLine['requestUrl']),
 				'metric_request': inputLine['requestUrl'].replace('.', '_'),
-				'metric_conn': otherKey
+				'metric_conn': otherKey,
+				'metric_size': inputLine['size']
 			}

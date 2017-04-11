@@ -3,7 +3,7 @@ from pymongo import MongoClient
 
 import sys
 sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
-from helper import Helper, TYPE, SCRIPT, SEVERITY
+from helper import Helper, TYPE, SCRIPT, SEVERITY, FirewallAlarmException
 
 
 #### Init helper object ####
@@ -41,6 +41,7 @@ threshold_counter = 5
 index = 0
 
 
+
 ###########################
 #### ANOMALY DETECTION ####
 ###########################
@@ -54,7 +55,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-			anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
+			# anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
 
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
@@ -65,7 +66,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-			anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
+			# anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
 
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
@@ -74,7 +75,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 	else:
-		report_GeneralAlert('Static list block', 'ip/uagent', diff, SEVERITY.CRITICAL)
+		FirewallAlarmException('Static list block', 'ip/uagent', diff, SEVERITY.CRITICAL, MessageMongoDB)
 
 
 
@@ -87,7 +88,7 @@ def anomaly_StaticChecks(packet):
 def anomaly_TotalConnections (profileRecord, requestRecord):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'general_TotalConnections', diff, SEVERITY.LOW)
+	if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'general_TotalConnections', diff, SEVERITY.LOW, MessageMongoDB)
 
 
 def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
@@ -96,28 +97,28 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
 		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
-		report_GeneralAlert('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH)
+		FirewallAlarmException('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH, MessageMongoDB)
 
 
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive counter on given metric """
 	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
-	if threshold_counter < diff: report_GeneralAlert('Counter exceeded', metric, diff, SEVERITY.LOW)
+	if threshold_counter < diff: FirewallAlarmException('Counter exceeded', metric, diff, SEVERITY.LOW, MessageMongoDB)
 
 
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if -threshold_ratio >= diff >= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff, SEVERITY.LOW)
+	if -threshold_ratio >= diff >= threshold_ratio: FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, MessageMongoDB)
 
 
 def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
 	try:
 		if requestRecord[metric][tmpLastObj['_id']]['min'] < profileRecord[metric][tmpLastObj['_id']]['min']:
-			report_GeneralAlert('Lower min found', metric, requestRecord[metric][tmpLastObj['_id']]['min'], SEVERITY.HIGH)
+			FirewallAlarmException('Lower min found', metric, requestRecord[metric][tmpLastObj['_id']]['min'], SEVERITY.HIGH, MessageMongoDB)
 
 		if requestRecord[metric][tmpLastObj['_id']]['max'] > profileRecord[metric][tmpLastObj['_id']]['max']:
-			report_GeneralAlert('Higher max found', metric, requestRecord[metric][tmpLastObj['_id']]['max'], SEVERITY.CRITICAL)
+			FirewallAlarmException('Higher max found', metric, requestRecord[metric][tmpLastObj['_id']]['max'], SEVERITY.CRITICAL, MessageMongoDB)
 	except KeyError:
 		pass
 
@@ -129,38 +130,17 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 		if param in profileRecord['metric_param']:
 			anomaly_ParamAnomaly(profileRecord, requestRecord, tmpLastObj)
 		else:
-			report_GeneralAlert('Unknown param', 'metric_param', param, SEVERITY.HIGH)
+			FirewallAlarmException('Unknown param', 'metric_param', param, SEVERITY.HIGH, MessageMongoDB)
 
 
 def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections on specific querystring parameter """
 	for param in tmpLastObj['metric_param']:
 		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		if threshold_counter < diff: report_GeneralAlert('Counter exceeded', 'metric_param', diff, SEVERITY.LOW)
+		if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'metric_param', diff, SEVERITY.LOW, MessageMongoDB)
 
 		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		if -threshold_ratio <= diff <= threshold_ratio: report_GeneralAlert('Param exceeded', 'metric_param', diff, SEVERITY.LOW)
-
-
-
-
-
-
-
-
-def report_GeneralAlert(msg, metric, details, severity):
-	""" Add timestamp and report incident to the firewall """
-	timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
-	MessageMongoDB.insert_one({'severity': severity, 'timestamp': timestamp, 'message':  timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'})
-	print timestamp + '[ALERT] ' + msg + ' (' + metric + ', ' + str(details) + ')'
-
-
-
-
-
-
-
-
+		if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, MessageMongoDB)
 
 
 
