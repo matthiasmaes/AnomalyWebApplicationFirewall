@@ -2,7 +2,7 @@ import random
 
 with open ('access.log', 'w+') as file:
 
-	for x in xrange(0,1000):
+	for x in xrange(0,500):
 		day = str(random.randint(1, 30))
 		hour = str(random.randint(0, 23))
 		minute = str(random.randint(0, 59))

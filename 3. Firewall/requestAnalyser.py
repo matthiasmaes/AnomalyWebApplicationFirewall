@@ -16,10 +16,8 @@ helperObj.OutputMongoDB = MongoClient().Firewall.processed
 ProfileAppMongoDB = MongoClient().profile_app['TEST']
 ProfileUserMongoDB = MongoClient().profile_user['TEST']
 MessageMongoDB = MongoClient().engine_log.firewall_messages
-
 IPReputationMongoDB = MongoClient().config_static.firewall_blocklist
 SpamAgentMongoDB = MongoClient().config_static.profile_extended_spam
-
 helperObj.BotMongoDB = MongoClient().config_static.profile_bots
 
 
@@ -34,7 +32,6 @@ UserMongoList = []
 for user in MongoClient().config_static.profile_user.find():
 	UserMongoList.append(user['name'])
 helperObj.UserMongoList = UserMongoList
-
 
 threshold_ratio = 0.1
 threshold_counter = 5
@@ -55,7 +52,6 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-			# anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
 
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
@@ -66,7 +62,6 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
-			# anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
 
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
@@ -96,8 +91,10 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 	if tmpLastObj[metric] in profileRecord[metric]:
 		anomaly_GeneralCounter(metric, profileRecord, requestRecord, tmpLastObj)
 		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
+		anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
-		FirewallAlarmException('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH, MessageMongoDB)
+		if metric != 'metric_size' and metric != 'metric_timespent':
+			FirewallAlarmException('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH, MessageMongoDB)
 
 
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
@@ -198,8 +195,6 @@ if __name__ == '__main__':
 				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
 
-
-				print helperObj.getUrlWithoutQuery(lineObj['url'])
 
 				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}).count() > 0:
 					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}), tmpLastObj, TYPE.APP)
