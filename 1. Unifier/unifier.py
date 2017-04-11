@@ -28,9 +28,11 @@ options, args = parser.parse_args()
 
 #### Init ####
 initTime = str('%02d' % datetime.datetime.now().hour) + ":" +  str('%02d' % datetime.datetime.now().minute) + ":" +  str('%02d' % datetime.datetime.now().second)
-MongoDB = MongoClient().FormattedLogs[options.dbName if options.dbName is not "" else options.log + ' - ' + initTime]
+# MongoDB = MongoClient().FormattedLogs[options.dbName if options.dbName is not "" else options.log + ' - ' + initTime]
 startTime = datetime.datetime.now()
-MongoDB.create_index('index', background=True)
+
+MongoClient().drop_database('TEST')
+MongoDB = MongoClient().FormattedLogs.TEST
 ##############
 
 
