@@ -143,8 +143,6 @@ class Helper(object):
 			delta = time2 - time1
 
 
-			print delta.total_seconds()
-
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
 				self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_timespent', delta.total_seconds())
 
@@ -327,6 +325,7 @@ class Helper(object):
 
 		if script == SCRIPT.FIREWALL:
 			return {
+				'_id': key,
 				'metric_param': queryString,
 
 				'metric_method': inputLine['method'],

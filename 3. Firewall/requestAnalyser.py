@@ -54,6 +54,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
+			anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
 
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
@@ -64,6 +65,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
 			anomaly_TotalConnections(profileRecord, requestRecord)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
+			anomaly_GeneralMinMax(profileRecord, requestRecord, tmpLastObj)
 
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
@@ -108,6 +110,16 @@ def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
 	if -threshold_ratio >= diff >= threshold_ratio: report_GeneralAlert('Ratio exceeded', metric, diff, SEVERITY.LOW)
 
+
+def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
+	try:
+		if requestRecord[metric][tmpLastObj['_id']]['min'] < profileRecord[metric][tmpLastObj['_id']]['min']:
+			report_GeneralAlert('Lower min found', metric, requestRecord[metric][tmpLastObj['_id']]['min'], SEVERITY.HIGH)
+
+		if requestRecord[metric][tmpLastObj['_id']]['max'] > profileRecord[metric][tmpLastObj['_id']]['max']:
+			report_GeneralAlert('Higher max found', metric, requestRecord[metric][tmpLastObj['_id']]['max'], SEVERITY.CRITICAL)
+	except KeyError:
+		pass
 
 
 def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
