@@ -111,9 +111,9 @@ except KeyboardInterrupt:
 	print 'Script cancelled by user'
 
 finally:
-	progressBarObj.finish()
 	for thread in threads:
 		thread.join()
+	progressBarObj.finish()
 
 	#### Print statistics ####
 	print('Total execution time: {} seconds'.format((datetime.datetime.now() - startTime).total_seconds()))
