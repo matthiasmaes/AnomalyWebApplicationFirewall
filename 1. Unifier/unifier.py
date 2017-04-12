@@ -3,7 +3,7 @@ from pymongo import MongoClient
 from optparse import OptionParser
 
 import sys
-sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
+# sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
 sys.path.append('../0. Helper')
 from helper import Helper
 

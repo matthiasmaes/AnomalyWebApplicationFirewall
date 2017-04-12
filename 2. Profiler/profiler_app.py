@@ -5,7 +5,7 @@ import math
 from pymongo import MongoClient
 
 import sys
-sys.path.append('C:/Users/bebxadvmmae/Desktop/REMOTE/0. Helper')
+sys.path.append('../0. Helper')
 from helper import Helper, TYPE, SCRIPT
 
 
