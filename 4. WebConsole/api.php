@@ -5,6 +5,8 @@
 			$dbname = $connection -> selectDB('engine_log');
 			$collection = $dbname -> selectCollection('firewall_messages');
 			$cursor = $collection -> find();
+			$cursor -> sort(array('_id' => -1));
+			$cursor -> limit(100);
 			$response = array();
 			foreach ($cursor as $doc) array_push($response, $doc);
 			echo json_encode($response);

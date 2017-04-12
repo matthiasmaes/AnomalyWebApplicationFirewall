@@ -1,4 +1,4 @@
-import datetime, time
+import time
 from pymongo import MongoClient
 
 import sys
@@ -70,7 +70,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 	else:
-		FirewallAlarmException('Static list block', 'ip/uagent', diff, SEVERITY.CRITICAL, MessageMongoDB)
+		FirewallAlarmException('Static list block', 'ip/uagent', 0, SEVERITY.CRITICAL, MessageMongoDB)
 
 
 
