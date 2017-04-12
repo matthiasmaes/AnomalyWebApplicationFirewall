@@ -7,6 +7,8 @@ import math
 from collections import OrderedDict
 from optparse import OptionParser
 from formattedLine import FormattedLine
+from pymongo import MongoClient
+
 
 class TYPE(object):
 	USER, APP = range(2)
@@ -15,18 +17,23 @@ class SCRIPT(object):
 	PROFILER, FIREWALL = range(2)
 
 class SEVERITY(object):
-	CRITICAL, HIGH, LOW = range(3)
+	LOW, HIGH, CRITICAL = range(3)
 
 
 class FirewallAlarmException(Exception):
-	def __init__(self, message, metric, details, severity, mongodb):
+	def __init__(self, message, metric, details, severity, typeProfile, ip):
 		self.timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
 		self.message = str(message)
 		self.metric = str(metric)
 		self.details = str(details)
 		self.severity = severity
 
-		mongodb.insert_one(self.__dict__)
+		if typeProfile == TYPE.USER:
+			ReputationMongoDB = MongoClient().Firewall.reputation
+			ReputationMongoDB.update_one({'ip': ip}, {'$inc': {'rep': 1}}, upsert=True)
+
+		MessageMongoDB = MongoClient().engine_log.firewall_messages
+		MessageMongoDB.insert_one(self.__dict__)
 		print self
 
 	def __str__(self):
@@ -352,8 +359,8 @@ class Helper(object):
 		if script == SCRIPT.FIREWALL:
 			return {
 				'_id': key,
+				'typeProfile': typeProfile,
 				'metric_param': queryString,
-
 				'metric_method': inputLine['method'],
 				'metric_day': timestamp.strftime("%A"),
 				'metric_status': inputLine['code'],
