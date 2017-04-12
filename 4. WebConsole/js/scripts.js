@@ -61,11 +61,17 @@ document.querySelector('#clear-log').addEventListener('click', function() {
 
 
 window.setInterval(function(){
+	var clearOnce = false;
 	$.ajax({url: 'api.php', data: "function=getLog", dataType: "json", success: function(result){
 		$(result).each(function(index){
 			if (!($(this)[0]['_id']['$id'] in $finalResult)) {
+				if (!clearOnce) {
+					clearOnce = true
+					$('#logMsg').empty();
+					$finalResult = {};
+				}
 				$finalResult[$(this)[0]['_id']['$id']] = $(this)[0]['message']
-				$('#logMsg').prepend('<p class="logMsgEntry">' + $(this)[0]['message'] + '<p>')
+				$('#logMsg').append('<p class="logMsgEntry">' + $(this)[0]['timestamp'] + ' ' + $(this)[0]['severity'] + ' ' + $(this)[0]['message'] + ' ' + $(this)[0]['details'] + ' ' + $(this)[0]['metric'] + '<p>')
 			}
 		});
 	}});
