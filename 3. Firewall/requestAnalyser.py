@@ -1,5 +1,6 @@
 import time
 from pymongo import MongoClient
+import os.path
 
 import sys
 sys.path.append('../0. Helper')
@@ -175,7 +176,14 @@ if __name__ == '__main__':
 
 	print '\n\n\n - [LOG] [OK] Firewall started correctly...'
 
-	with open('C:/wamp64/logs/access.log') as fileobject:
+
+
+	if os.path.exists('C:/wamp64/logs/access.log'):
+		path = 'C:/wamp64/logs/access.log'
+	elif os.path.exists('/var/log/nginx/access.log'):
+		path = '/var/log/nginx/access.log'
+
+	with open(path) as fileobject:
 
 		print ' - [LOG] [OK] Ready to start processing requests...'
 		fileobject.seek(0,2)
