@@ -68,7 +68,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
 
 	else:
-		FirewallAlarmException('Static list block', 'ip/uagent', 0, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['key'])
+		FirewallAlarmException('Static list block', 'ip/uagent', 0, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 
@@ -81,7 +81,7 @@ def anomaly_StaticChecks(packet):
 def anomaly_TotalConnections (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections """
 	diff = int(requestRecord['general_totalConnections']) - int(profileRecord['general_totalConnections'])
-	if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'general_TotalConnections', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['key'])
+	if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'general_TotalConnections', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
@@ -91,7 +91,7 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 		anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
 		if metric != 'metric_size' and metric != 'metric_timespent':
-			FirewallAlarmException('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['key'])
+			FirewallAlarmException('Unknown found in', metric, tmpLastObj[metric], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 	# Do not detect unknown on min max metrics (timespent, size etc)
 	anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj)
@@ -100,22 +100,22 @@ def anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj):
 def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive counter on given metric """
 	diff = int(requestRecord[metric][tmpLastObj[metric]]['counter']) - int(profileRecord[metric][tmpLastObj[metric]]['counter'])
-	if threshold_counter < diff: FirewallAlarmException('Counter exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['key'])
+	if threshold_counter < diff: FirewallAlarmException('Counter exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if not(-threshold_ratio <= diff <= threshold_ratio): FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['key'])
+	if not(-threshold_ratio <= diff <= threshold_ratio): FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
 	try:
 		if requestRecord[metric][tmpLastObj['otherkey']]['min'] < profileRecord[metric][tmpLastObj['otherkey']]['min']:
-			FirewallAlarmException('Lower min found', metric, requestRecord[metric][tmpLastObj['otherkey']]['min'], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['otherkey'])
+			FirewallAlarmException('Lower min found', metric, requestRecord[metric][tmpLastObj['otherkey']]['min'], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['otherip'])
 
 		if requestRecord[metric][tmpLastObj['otherkey']]['max'] > profileRecord[metric][tmpLastObj['otherkey']]['max']:
-			FirewallAlarmException('Higher max found', metric, requestRecord[metric][tmpLastObj['otherkey']]['max'], SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['otherkey'])
+			FirewallAlarmException('Higher max found', metric, requestRecord[metric][tmpLastObj['otherkey']]['max'], SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['otherip'])
 	except KeyError:
 		pass
 
@@ -127,17 +127,17 @@ def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 		if param in profileRecord['metric_param']:
 			anomaly_ParamAnomaly(profileRecord, requestRecord, tmpLastObj)
 		else:
-			FirewallAlarmException('Unknown param', 'metric_param', param, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['key'])
+			FirewallAlarmException('Unknown param', 'metric_param', param, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections on specific querystring parameter """
 	for param in tmpLastObj['metric_param']:
 		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
-		if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['key'])
+		if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['key'])
+		if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 
