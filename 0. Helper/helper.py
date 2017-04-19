@@ -21,6 +21,9 @@ class SEVERITY(object):
 
 
 class FirewallAlarmException(Exception):
+	ReputationMongoDB = MongoClient().Firewall.reputation
+	MessageMongoDB = MongoClient().engine_log.firewall_messages
+
 	def __init__(self, message, metric, details, severity, typeProfile, ip):
 		self.timestamp = datetime.datetime.now().strftime('[%d/%m/%Y][%H:%M:%S]')
 		self.message = str(message)
@@ -29,11 +32,10 @@ class FirewallAlarmException(Exception):
 		self.severity = severity
 
 		if typeProfile == TYPE.USER:
-			ReputationMongoDB = MongoClient().Firewall.reputation
-			ReputationMongoDB.update_one({'ip': ip}, {'$inc': {'rep': -1}}, upsert=True)
+			self.ReputationMongoDB.update_one({'ip': ip}, {'$inc': {'rep': -1}}, upsert=True)
+			self.ReputationMongoDB.update_one({'ip': ip}, {'$set' : {'registered': False}})
 
-		MessageMongoDB = MongoClient().engine_log.firewall_messages
-		MessageMongoDB.insert_one(self.__dict__)
+		self.MessageMongoDB.insert_one(self.__dict__)
 		print self
 
 	def __str__(self):

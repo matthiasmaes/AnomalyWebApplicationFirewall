@@ -104,7 +104,7 @@ def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if -threshold_ratio >= diff >= threshold_ratio: FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['_id'])
+	if not(-threshold_ratio <= diff <= threshold_ratio): FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['_id'])
 
 
 def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
