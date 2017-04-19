@@ -32,12 +32,7 @@ class FirewallAlarmException(Exception):
 		self.severity = severity
 
 		if typeProfile == TYPE.USER:
-			print'---'
-			print self.ReputationMongoDB.find_one({'ip': ip})
-			print -1 * int(severity + 1)
-
 			self.ReputationMongoDB.update_one({'ip': ip}, {'$inc': {'rep': -1 * int(severity + 1)}}, upsert=True)
-			print self.ReputationMongoDB.find_one({'ip': ip})
 			self.ReputationMongoDB.update_one({'ip': ip}, {'$set' : {'registered': False}})
 
 		self.MessageMongoDB.insert_one(self.__dict__)
