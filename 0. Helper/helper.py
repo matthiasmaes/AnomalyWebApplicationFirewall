@@ -360,7 +360,8 @@ class Helper(object):
 
 		if script == SCRIPT.FIREWALL:
 			return {
-				'_id': key,
+				'key': key,
+				'otherkey': otherKey,
 				'typeProfile': typeProfile,
 				'metric_param': queryString,
 				'metric_method': inputLine['method'],
