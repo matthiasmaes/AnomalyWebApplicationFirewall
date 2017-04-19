@@ -46,13 +46,18 @@ index = 0
 def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 	""" Start anomaly detection process """
 
+	# Start off by performing the static checks (ip, location...)
 	if (anomaly_StaticChecks(packet)):
 
+		# Differentiate between user and app anomaly detection (different keys: ip/url)
 		if typeProfile == TYPE.USER:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': packet['ip']})
+
+			# Perform most basic checks (Total connections)
 			anomaly_TotalConnections(profileRecord, requestRecord, tmpLastObj)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
 
+			# Iterate over all metrics and perform the standard checks (counter, ratio and average)
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -61,9 +66,12 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 		else:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
+
+			# Perform most basic checks (Total connections)
 			anomaly_TotalConnections(profileRecord, requestRecord, tmpLastObj)
 			anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj)
 
+			# Iterate over all metrics and perform the standard checks (counter, ratio and average)
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
@@ -76,7 +84,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 
 
 def anomaly_StaticChecks(packet):
-	""" Check static blocklist with ips """
+	""" Check static blocklist with ips and spam user agent list"""
 	return IPReputationMongoDB.find_one({'_id' : packet['ip']}) == None and SpamAgentMongoDB.find_one({'string' : packet['uagent']}) == None
 
 
@@ -112,22 +120,33 @@ def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 
 
 def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
+	""" Generic method for detecting anomalies in min max from metrics """
+
 	try:
+		# Test on min
 		if requestRecord[metric][tmpLastObj['otherkey']]['min'] < profileRecord[metric][tmpLastObj['otherkey']]['min']:
 			FirewallAlarmException('Lower min found', metric, requestRecord[metric][tmpLastObj['otherkey']]['min'], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['otherip'])
 
+		# Test on max
 		if requestRecord[metric][tmpLastObj['otherkey']]['max'] > profileRecord[metric][tmpLastObj['otherkey']]['max']:
 			FirewallAlarmException('Higher max found', metric, requestRecord[metric][tmpLastObj['otherkey']]['max'], SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['otherip'])
 	except KeyError:
+		# Not every metric has a min/max defined
 		pass
 
 def anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj):
+	""" Generic method for detecting anomalies in deviation of average """
+
 	try:
 		diff = int(requestRecord[metric][tmpLastObj['otherkey']]['average']) - int(profileRecord[metric][tmpLastObj['otherkey']]['average'])
 		standev = diff / profileRecord[metric][tmpLastObj['otherkey']]['deviation'] if profileRecord[metric][tmpLastObj['otherkey']]['deviation'] != 0.0 else 1
+
+		# The further the average deviates the higher the alert becomes
 		if not(-2 <= standev <= 2): FirewallAlarmException('Standev > 2 sigma', metric, standev, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 		if not(-3 <= standev <= 3): FirewallAlarmException('Standev > 3 sigma', metric, standev, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+
 	except KeyError:
+		# Not every metric has a deviation defined
 		pass
 
 
@@ -204,7 +223,7 @@ if __name__ == '__main__':
 
 			if inputLine != '':
 				print '===== Starting Analysis ====='
-				print inputLine
+				print 'INPUT: ', inputLine
 
 				#### Create line object and insert it in mongodb
 				lineObj = helperObj.processLine(inputLine, index)
@@ -213,7 +232,6 @@ if __name__ == '__main__':
 				## App filtering
 				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
-
 
 				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}).count() > 0:
 					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}), tmpLastObj, TYPE.APP)
