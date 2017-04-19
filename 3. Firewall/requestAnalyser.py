@@ -124,8 +124,10 @@ def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
 
 def anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj):
 	diff = int(requestRecord[metric][tmpLastObj['otherkey']]['average']) - int(profileRecord[metric][tmpLastObj['otherkey']]['average'])
-	print 'AVG DIFF ', diff
-	if not(-threshold_counter <= diff <= threshold_counter): FirewallAlarmException('Average variated', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	standev = diff/profileRecord[metric][tmpLastObj['otherkey']]['deviation']
+	standev = 5
+	if not(-2 <= standev <= 2): FirewallAlarmException('Standev > 2 sigma', metric, standev, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	if not(-3 <= standev <= 3): FirewallAlarmException('Standev > 3 sigma', metric, standev, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 
