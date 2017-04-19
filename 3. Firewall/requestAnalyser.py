@@ -35,7 +35,6 @@ helperObj.UserMongoList = UserMongoList
 
 threshold_ratio = 0.1
 threshold_counter = 5
-threshold_average = 10
 index = 0
 
 
@@ -57,7 +56,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			for metric in ProfileUserMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
-				elif 'timespent' in metric:
+				if 'timespent' in metric or 'size' in metric:
 					anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj)
 
 		else:
@@ -68,7 +67,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 			for metric in ProfileAppMongoDB.find_one():
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
-				elif 'timespent' in metric:
+				if 'timespent' in metric or 'size' in metric:
 					anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
 		FirewallAlarmException('Static list block', 'ip/uagent', 0, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
@@ -109,7 +108,7 @@ def anomaly_GeneralCounter (metric, profileRecord, requestRecord, tmpLastObj):
 def anomaly_GeneralRatio(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting excessive ratio on given metric """
 	diff = float(requestRecord[metric][tmpLastObj[metric]]['ratio']) - float(profileRecord[metric][tmpLastObj[metric]]['ratio'])
-	if not(-threshold_average <= diff <= threshold_average): FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	if not(-threshold_ratio <= diff <= threshold_ratio): FirewallAlarmException('Ratio exceeded', metric, diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
@@ -123,11 +122,13 @@ def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
 		pass
 
 def anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj):
-	diff = int(requestRecord[metric][tmpLastObj['otherkey']]['average']) - int(profileRecord[metric][tmpLastObj['otherkey']]['average'])
-	standev = diff/profileRecord[metric][tmpLastObj['otherkey']]['deviation']
-	standev = 5
-	if not(-2 <= standev <= 2): FirewallAlarmException('Standev > 2 sigma', metric, standev, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
-	if not(-3 <= standev <= 3): FirewallAlarmException('Standev > 3 sigma', metric, standev, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	try:
+		diff = int(requestRecord[metric][tmpLastObj['otherkey']]['average']) - int(profileRecord[metric][tmpLastObj['otherkey']]['average'])
+		standev = diff / profileRecord[metric][tmpLastObj['otherkey']]['deviation'] if profileRecord[metric][tmpLastObj['otherkey']]['deviation'] != 0.0 else 1
+		if not(-2 <= standev <= 2): FirewallAlarmException('Standev > 2 sigma', metric, standev, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+		if not(-3 <= standev <= 3): FirewallAlarmException('Standev > 3 sigma', metric, standev, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	except KeyError:
+		pass
 
 
 
