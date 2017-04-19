@@ -30,7 +30,7 @@ class FirewallAlarmException(Exception):
 
 		if typeProfile == TYPE.USER:
 			ReputationMongoDB = MongoClient().Firewall.reputation
-			ReputationMongoDB.update_one({'ip': ip}, {'$inc': {'rep': 1}}, upsert=True)
+			ReputationMongoDB.update_one({'ip': ip}, {'$inc': {'rep': -1}}, upsert=True)
 
 		MessageMongoDB = MongoClient().engine_log.firewall_messages
 		MessageMongoDB.insert_one(self.__dict__)
