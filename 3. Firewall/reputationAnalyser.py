@@ -1,8 +1,7 @@
 import time
 from pymongo import MongoClient
 import iptc
-from datetime import datetime
-
+import datetime
 ReputationMongoDB = MongoClient().Firewall.reputation
 
 
@@ -26,7 +25,7 @@ def blockIpTable(ip):
 	rule = iptc.Rule()
 	rule.src = ip
 	rule.target = rule.create_target("DROP")
-	rule.match = rule.create_match("comment").comment = str(datetime.strftime(datetime.now() + datetime.timedelta(days=1), "%y-%m-%d %H:%M:%S"))
+	rule.match = rule.create_match("comment").comment = str(datetime.datetime.strftime(datetime.datetime.now() + datetime.timedelta(days=1), "%y-%m-%d %H:%M:%S"))
 	chain.insert_rule(rule)
 
 
