@@ -26,7 +26,7 @@ def blockIpTable(ip):
 	rule = iptc.Rule()
 	rule.src = ip
 	rule.target = rule.create_target("DROP")
-	rule.match = rule.create_match("comment").comment = str(datetime.now())
+	rule.match = rule.create_match("comment").comment = str(datetime.strftime(datetime.now(), "%y-%m-%d %H:%M:%S"))
 	chain.insert_rule(rule)
 
 
@@ -34,7 +34,7 @@ def blockIpTable(ip):
 if __name__ == '__main__':
 	print 'Analysing started...'
 	while True:
-		for client in ReputationMongoDB.find({'registered': False, 'rep': { '$lt': -10 }}):
+		for client in ReputationMongoDB.find({'registered': False, 'rep': { '$lt': -100 }}):
 			print 'bad ip: ', client['ip']
 			ReputationMongoDB.update_one({'_id': client['_id']}, {'$set' : {'registered': True, 'rep': 0}})
 
