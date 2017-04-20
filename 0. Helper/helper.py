@@ -159,6 +159,8 @@ class Helper(object):
 		timelineDict = self.OutputMongoDB.find_one({'_id' : identifier})['general_timeline']
 		timelineList = map(list, OrderedDict(sorted(timelineDict.items(), key=lambda t: datetime.datetime.strptime(t[0], '%d/%b/%Y %H:%M:%S'))).items())
 
+		delta = 0
+
 		for event in timelineList:
 			#### Calculate avg time spent for each base url ####
 			if timelineList.index(event) == len(timelineList) - 1:
@@ -172,6 +174,8 @@ class Helper(object):
 
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
 				self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_timespent', delta.total_seconds())
+
+		return delta.total_seconds()
 
 
 	def calulateAvgSize(self, identifier, otherIdentifier, size):
@@ -338,7 +342,7 @@ class Helper(object):
 
 
 		#### See self.py for details on functions ####
-		self.makeTimeline(key, otherKey)
+		deltaTime = self.makeTimeline(key, otherKey)
 		self.calulateAvgSize(key, otherKey, inputLine['size'])
 
 
@@ -370,11 +374,12 @@ class Helper(object):
 				'metric_status': inputLine['code'],
 				'metric_agent': inputLine['uagent'].replace('.', '_'),
 				'metric_login': loginResult,
-				'metric_timespent': None,
 				'metric_location': self.GeoLocate(inputLine['ip'], True),
 				'metric_time': timestamp.strftime("%H"),
 				'metric_ext': self.getFileType(inputLine['requestUrl']),
 				'metric_request': inputLine['requestUrl'].replace('.', '_'),
 				'metric_conn': otherKey,
-				'metric_size': inputLine['size']
+
+				'metric_size': inputLine['size'],
+				'metric_timespent': deltaTime
 			}

@@ -62,7 +62,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
 				if 'timespent' in metric or 'size' in metric:
-					anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj)
+					anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj)
 
 		else:
 			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
@@ -76,7 +76,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 				if 'metric' in metric and 'param' not in metric and 'timespent' not in metric:
 					anomaly_GeneralUnknown(metric, profileRecord, requestRecord, tmpLastObj)
 				if 'timespent' in metric or 'size' in metric:
-					anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj)
+					anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj)
 	else:
 		FirewallAlarmException('Static list block', 'ip/uagent', 0, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
@@ -134,16 +134,29 @@ def anomaly_GeneralMinMax(metric, profileRecord, requestRecord, tmpLastObj):
 		# Not every metric has a min/max defined
 		pass
 
-def anomaly_GeneralAverage(metric, profileRecord, requestRecord, tmpLastObj):
+
+def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 	""" Generic method for detecting anomalies in deviation of average """
 
 	try:
-		diff = int(requestRecord[metric][tmpLastObj['otherkey']]['average']) - int(profileRecord[metric][tmpLastObj['otherkey']]['average'])
-		standev = diff / profileRecord[metric][tmpLastObj['otherkey']]['deviation'] if profileRecord[metric][tmpLastObj['otherkey']]['deviation'] != 0.0 else 1
+		try:
+			newValue = int(tmpLastObj[metric])
+			avg = profileRecord[metric][tmpLastObj['otherkey']]['average']
+			standev = profileRecord[metric][tmpLastObj['otherkey']]['deviation']
+		except ValueError:
+			print 'VALUE ERROR'
+			return
 
 		# The further the average deviates the higher the alert becomes
-		if not(-2 <= standev <= 2): FirewallAlarmException('Standev > 2 sigma', metric, standev, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
-		if not(-3 <= standev <= 3): FirewallAlarmException('Standev > 3 sigma', metric, standev, SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+
+		if newValue in xrange(int(avg - standev),  int(avg + standev)):
+			print 'Value is safe!'
+		else:
+			if newValue in xrange(int(avg - 2 * standev),  int(avg + 2 * standev)):
+				FirewallAlarmException('Value deviates between 1 and 2 sigma form average', metric, 'Value within range: ' + str(avg - 2 * standev) + ' - ' + str(avg + 2 * standev) , SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+			# elif newValue in xrange(int(avg - 3 * standev),  int(avg + 3 * standev)):
+			else:
+				FirewallAlarmException('Value deviates more than 2 sigma from average', metric, 'Value outside range: ' + str(avg - 2 * standev) + ' - ' + str(avg + 2 * standev) , SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 	except KeyError:
 		# Not every metric has a deviation defined
