@@ -175,7 +175,11 @@ class Helper(object):
 			if delta.total_seconds() > 5 and delta.total_seconds() < 3600:
 				self.calculateNewAverageDeviance(identifier, otherIdentifier, 'metric_timespent', delta.total_seconds())
 
-		return delta.total_seconds()
+
+		try:
+			return delta.total_seconds()
+		except AttributeError:
+			return None
 
 
 	def calulateAvgSize(self, identifier, otherIdentifier, size):
@@ -298,7 +302,6 @@ class Helper(object):
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_conn.' + otherKey + '.counter': 1 }})
 
 		#### Categorize conn admin/user/normal ####
-		print 'FILTER: ', reqUrlReplaced
 		if len([s for s in self.AdminMongoList if s in reqUrlReplaced]) != 0:
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
 			loginResult = 'admin'
@@ -309,8 +312,16 @@ class Helper(object):
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
 			loginResult = 'normal'
 
+
+
+
+
+
+
 		#### Add querystring param ####
+		analysed_param = list()
 		if len(queryString) > 0:
+
 			for param in queryString:
 				if len(param.split('=')) == 2:
 					pKey = param.split('=')[0]
@@ -334,6 +345,14 @@ class Helper(object):
 					bulk.find({'_id': key}).update_one({'$set': { 'metric_param.' + pKey + '.type': paramType}})
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
+
+
+					analysed_param.append({
+						'key': pKey,
+						'characters': chars,
+						'length': len(pValue),
+						'type': paramType
+					})
 
 
 		#### Execute bulk statement ####
@@ -365,6 +384,11 @@ class Helper(object):
 
 
 		if script == SCRIPT.FIREWALL:
+
+
+
+
+
 			return {
 				'key': key,
 				'otherkey': otherKey,
@@ -383,5 +407,8 @@ class Helper(object):
 				'metric_conn': otherKey,
 
 				'metric_size': inputLine['size'],
-				'metric_timespent': deltaTime
+				'metric_timespent': deltaTime,
+
+
+				'analysed_param': analysed_param
 			}

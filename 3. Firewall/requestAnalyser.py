@@ -35,6 +35,7 @@ helperObj.UserMongoList = UserMongoList
 
 threshold_ratio = 0.1
 threshold_counter = 5
+threshold_length = 5
 index = 0
 
 
@@ -144,7 +145,10 @@ def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 			avg = profileRecord[metric][tmpLastObj['otherkey']]['average']
 			standev = profileRecord[metric][tmpLastObj['otherkey']]['deviation']
 		except ValueError:
-			print 'VALUE ERROR'
+			print '[DEBUG] VALUE ERROR'
+			return
+		except TypeError:
+			print '[DEBUG] TYPE ERROR'
 			return
 
 		# The further the average deviates the higher the alert becomes
@@ -153,10 +157,10 @@ def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 			print 'Value is safe!'
 		else:
 			if newValue in xrange(int(avg - 2 * standev),  int(avg + 2 * standev)):
-				FirewallAlarmException('Value deviates between 1 and 2 sigma form average', metric, 'Value within range: ' + str(avg - 2 * standev) + ' - ' + str(avg + 2 * standev) , SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+				FirewallAlarmException('Value deviates between 1 and 2 sigma form average', metric, 'Value (' + str(newValue) + ') within range: ' + str(avg - 2 * standev) + ' | ' + str(avg + 2 * standev) , SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 			# elif newValue in xrange(int(avg - 3 * standev),  int(avg + 3 * standev)):
 			else:
-				FirewallAlarmException('Value deviates more than 2 sigma from average', metric, 'Value outside range: ' + str(avg - 2 * standev) + ' - ' + str(avg + 2 * standev) , SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+				FirewallAlarmException('Value deviates more than 2 sigma from average', metric, 'Value (' + str(newValue) + ') outside range: ' + str(avg - 2 * standev) + ' | ' + str(avg + 2 * standev) , SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 	except KeyError:
 		# Not every metric has a deviation defined
@@ -166,6 +170,8 @@ def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 
 def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in parameter metric """
+
+	anomaly_ParamAnalyzed(profileRecord, requestRecord, tmpLastObj)
 
 	for param in tmpLastObj['metric_param']:
 		if param in profileRecord['metric_param']:
@@ -184,9 +190,20 @@ def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 		if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
+def anomaly_ParamAnalyzed (profileRecord, requestRecord, tmpLastObj):
+	for ana in tmpLastObj['analysed_param']:
 
+		# Test for type
+		if ana['type'] != profileRecord['metric_param'][ana['key']]['type']:
+			FirewallAlarmException('Param type mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][ana['key']]['type'] + ' - Received: ' + ana['type'] + ' - ON PARAM: ' + ana['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
+		# Test for chars
+		if ana['characters'] != profileRecord['metric_param'][ana['key']]['characters']:
+			FirewallAlarmException('Param characters mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][ana['key']]['characters'] + ' - Received: ' + ana['characters'] + ' - ON PARAM: ' + ana['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
+		# Test for length
+		if abs(ana['length'] - profileRecord['metric_param'][ana['key']]['length']) > threshold_length:
+			FirewallAlarmException('Param length mismatch', 'metric_param', 'Expected: ' + str(profileRecord['metric_param'][ana['key']]['length']) + ' - Received: ' + str(ana['length']) + ' - ON PARAM: ' + ana['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 
@@ -245,6 +262,7 @@ if __name__ == '__main__':
 				## App filtering
 				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
+
 
 				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['requestUrl'])}).count() > 0:
 					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['requestUrl'])}), tmpLastObj, TYPE.APP)
