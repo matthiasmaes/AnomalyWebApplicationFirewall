@@ -70,12 +70,12 @@ class Helper(object):
 	def GeoLocate(self, ip, ping):
 		""" Method for translating ip-address to geolocation (country) """
 
-		if ip == '::1':
+		if ip == '::1' or ip == '192.168.137.1':
 			return 'Belgium'
 
 		try:
 			IP2LocObj = IP2Location.IP2Location();
-			IP2LocObj.open("sources\IP2GEODB.BIN");
+			IP2LocObj.open("IP2GEODB.BIN");
 			return IP2LocObj.get_all(ip).country_long;
 		except Exception as e:
 			print 'geo'
