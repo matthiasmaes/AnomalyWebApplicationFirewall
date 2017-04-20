@@ -12,5 +12,5 @@ for rule in chain.rules:
 
 		datetime_object = datetime.strptime(match.comment, "%y-%m-%d %H:%M:%S")
 
-		if datetime.now < datetime_object:
+		if datetime.now() < datetime_object:
 			chain.delete_rule(rule)
