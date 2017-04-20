@@ -65,7 +65,7 @@ def startAnomalyDetection(packet, profileRecord, tmpLastObj, typeProfile):
 					anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj)
 
 		else:
-			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['url'])})
+			requestRecord = helperObj.OutputMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(packet['requestUrl'])})
 
 			# Perform most basic checks (Total connections)
 			anomaly_TotalConnections(profileRecord, requestRecord, tmpLastObj)
@@ -246,8 +246,8 @@ if __name__ == '__main__':
 				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
 
-				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}).count() > 0:
-					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['url'])}), tmpLastObj, TYPE.APP)
+				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['requestUrl'])}).count() > 0:
+					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['requestUrl'])}), tmpLastObj, TYPE.APP)
 				else:
 					print 'Not profiled page'
 
