@@ -26,7 +26,7 @@ def blockIpTable(ip):
 	rule = iptc.Rule()
 	rule.src = ip
 	rule.target = rule.create_target("DROP")
-	rule.match = rule.create_match("comment").comment = str(datetime.strftime(datetime.now(), "%y-%m-%d %H:%M:%S"))
+	rule.match = rule.create_match("comment").comment = str(datetime.strftime(datetime.now() + datetime.timedelta(days=1), "%y-%m-%d %H:%M:%S"))
 	chain.insert_rule(rule)
 
 
