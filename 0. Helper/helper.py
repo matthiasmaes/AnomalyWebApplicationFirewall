@@ -248,9 +248,9 @@ class Helper(object):
 
 		if typeProfile == TYPE.USER:
 			key = inputLine['ip']
-			otherKey = self.getUrlWithoutQuery(inputLine['url']).replace('.','_')
+			otherKey = self.getUrlWithoutQuery(inputLine['requestUrl']).replace('.','_')
 		elif typeProfile == TYPE.APP:
-			key = self.getUrlWithoutQuery(inputLine['url'])
+			key = self.getUrlWithoutQuery(inputLine['requestUrl'])
 			otherKey = inputLine['ip'].replace('.','_')
 
 		if inputLine is None:
@@ -264,8 +264,9 @@ class Helper(object):
 
 			timestamp = datetime.datetime(int(split[2]), self.monthAbbrToInt(split[1]) , int(split[0]), int(split[3]), int(split[4]), int(split[5]), 0)
 
-		urlWithoutQuery = self.getUrlWithoutQuery(inputLine['url']).replace('.', '_')
-		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['url'])]
+		reqUrlReplaced = inputLine['requestUrl'].replace('.', '_')
+		urlWithoutQuery = self.getUrlWithoutQuery(inputLine['requestUrl']).replace('.', '_')
+		queryString = [element.replace('.', '_') for element in self.getQueryString(inputLine['requestUrl'])]
 
 		#### Insert record if it doesn't exists ####
 		if self.OutputMongoDB.find({'_id': key}).count() == 0:
@@ -297,10 +298,11 @@ class Helper(object):
 		bulk.find({'_id': key}).update_one({'$inc': {'metric_conn.' + otherKey + '.counter': 1 }})
 
 		#### Categorize conn admin/user/normal ####
-		if len([s for s in self.AdminMongoList if s in urlWithoutQuery]) != 0:
+		print 'FILTER: ', reqUrlReplaced
+		if len([s for s in self.AdminMongoList if s in reqUrlReplaced]) != 0:
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.admin.counter': 1 }})
 			loginResult = 'admin'
-		elif len([s for s in self.UserMongoList if s in urlWithoutQuery]) != 0:
+		elif len([s for s in self.UserMongoList if s in reqUrlReplaced]) != 0:
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.user.counter': 1 }})
 			loginResult = 'user'
 		else:
