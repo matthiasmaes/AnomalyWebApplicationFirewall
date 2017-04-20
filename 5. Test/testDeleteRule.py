@@ -9,8 +9,9 @@ for rule in chain.rules:
 	index += 1
 	print index
 	for match in rule.matches:
+		if match.comment != None:
+			datetime_object = datetime.strptime(match.comment, "%y-%m-%d %H:%M:%S")
 
-		datetime_object = datetime.strptime(match.comment, "%y-%m-%d %H:%M:%S")
-
-		if datetime.now() < datetime_object:
+		if datetime.now() > datetime_object:
 			chain.delete_rule(rule)
+			print "Rule successfully deleted"
