@@ -153,9 +153,7 @@ def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 
 		# The further the average deviates the higher the alert becomes
 
-		if newValue in xrange(int(avg - standev),  int(avg + standev)):
-			print 'Value is safe!'
-		else:
+		if newValue not in xrange(int(avg - standev),  int(avg + standev)):
 			if newValue in xrange(int(avg - 2 * standev),  int(avg + 2 * standev)):
 				FirewallAlarmException('Value deviates between 1 and 2 sigma form average', metric, 'Value (' + str(newValue) + ') within range: ' + str(avg - 2 * standev) + ' | ' + str(avg + 2 * standev) , SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 			# elif newValue in xrange(int(avg - 3 * standev),  int(avg + 3 * standev)):
@@ -171,39 +169,38 @@ def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 def anomaly_ParamUnknown(profileRecord, requestRecord, tmpLastObj):
 	""" Detect unknowns in parameter metric """
 
-	anomaly_ParamAnalyzed(profileRecord, requestRecord, tmpLastObj)
 
-	for param in tmpLastObj['metric_param']:
-		if param in profileRecord['metric_param']:
+	for analysedParam in tmpLastObj['analysed_param']:
+		if analysedParam['key'] in profileRecord['metric_param']:
 			anomaly_ParamAnomaly(profileRecord, requestRecord, tmpLastObj)
+			anomaly_ParamAnalyzed(profileRecord, analysedParam)
 		else:
-			FirewallAlarmException('Unknown param', 'metric_param', param, SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+			FirewallAlarmException('Unknown param', 'metric_param', analysedParam['key'], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 	""" Detect to many connections on specific querystring parameter """
-	for param in tmpLastObj['metric_param']:
-		diff = int(requestRecord['metric_param'][param]['counter']) - int(profileRecord['metric_param'][param]['counter'])
+	for analysedParam in tmpLastObj['analysed_param']:
+		diff = int(requestRecord['metric_param'][analysedParam['key']]['counter']) - int(profileRecord['metric_param'][analysedParam['key']]['counter'])
 		if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
-		diff = float(requestRecord['metric_param'][param]['ratio']) - float(profileRecord['metric_param'][param]['ratio'])
-		if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+		# diff = float(requestRecord['metric_param'][analysedParam['key']]['ratio']) - float(profileRecord['metric_param'][analysedParam['key']]['ratio'])
+		# if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
-def anomaly_ParamAnalyzed (profileRecord, requestRecord, tmpLastObj):
-	for ana in tmpLastObj['analysed_param']:
+def anomaly_ParamAnalyzed (profileRecord, analysedParam):
 
-		# Test for type
-		if ana['type'] != profileRecord['metric_param'][ana['key']]['type']:
-			FirewallAlarmException('Param type mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][ana['key']]['type'] + ' - Received: ' + ana['type'] + ' - ON PARAM: ' + ana['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	# Test for type
+	if analysedParam['type'] != profileRecord['metric_param'][analysedParam['key']]['type']:
+		FirewallAlarmException('Param type mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][analysedParam['key']]['type'] + ' - Received: ' + analysedParam['type'] + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
-		# Test for chars
-		if ana['characters'] != profileRecord['metric_param'][ana['key']]['characters']:
-			FirewallAlarmException('Param characters mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][ana['key']]['characters'] + ' - Received: ' + ana['characters'] + ' - ON PARAM: ' + ana['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	# Test for chars
+	if analysedParam['characters'] != profileRecord['metric_param'][analysedParam['key']]['characters']:
+		FirewallAlarmException('Param characters mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][analysedParam['key']]['characters'] + ' - Received: ' + analysedParam['characters'] + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
-		# Test for length
-		if abs(ana['length'] - profileRecord['metric_param'][ana['key']]['length']) > threshold_length:
-			FirewallAlarmException('Param length mismatch', 'metric_param', 'Expected: ' + str(profileRecord['metric_param'][ana['key']]['length']) + ' - Received: ' + str(ana['length']) + ' - ON PARAM: ' + ana['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+	# Test for length
+	if abs(analysedParam['length'] - profileRecord['metric_param'][analysedParam['key']]['length']) > threshold_length:
+		FirewallAlarmException('Param length mismatch', 'metric_param', 'Expected: ' + str(profileRecord['metric_param'][analysedParam['key']]['length']) + ' - Received: ' + str(analysedParam['length']) + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 
