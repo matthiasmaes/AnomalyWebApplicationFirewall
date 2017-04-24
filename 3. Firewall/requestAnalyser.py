@@ -192,11 +192,11 @@ def anomaly_ParamAnalyzed (profileRecord, analysedParam):
 
 	# Test for type
 	if analysedParam['type'] != profileRecord['metric_param'][analysedParam['key']]['type']:
-		FirewallAlarmException('Param type mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][analysedParam['key']]['type'] + ' - Received: ' + analysedParam['type'] + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+		FirewallAlarmException('Param type mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][analysedParam['key']]['type'] + ' - Received: ' + analysedParam['type'] + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 	# Test for chars
 	if analysedParam['characters'] != profileRecord['metric_param'][analysedParam['key']]['characters']:
-		FirewallAlarmException('Param characters mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][analysedParam['key']]['characters'] + ' - Received: ' + analysedParam['characters'] + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
+		FirewallAlarmException('Param characters mismatch', 'metric_param', 'Expected: ' + profileRecord['metric_param'][analysedParam['key']]['characters'] + ' - Received: ' + analysedParam['characters'] + ' - ON PARAM: ' + analysedParam['key'], SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 	# Test for length
 	if abs(analysedParam['length'] - profileRecord['metric_param'][analysedParam['key']]['length']) > threshold_length:
