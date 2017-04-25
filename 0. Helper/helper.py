@@ -234,10 +234,6 @@ class Helper(object):
 		# DEVIANCE #
 		try:
 			orgDeviation = math.pow((self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']),2)
-			# STEEKPROEF
-			# newDeviation = (((counter - 2) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter - 1)
-
-			# POPULATIE
 			newDeviation = (((counter-1) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter)
 
 		except KeyError:
@@ -265,7 +261,6 @@ class Helper(object):
 			timestamp = datetime.datetime.strptime(inputLine['fulltime'].split(' ')[0], '%d/%b/%Y:%H:%M:%S')
 		except Exception as e:
 			split = inputLine['fulltime'].replace(' ',':').replace('/',':').split(':')
-
 			timestamp = datetime.datetime(int(split[2]), self.monthAbbrToInt(split[1]) , int(split[0]), int(split[3]), int(split[4]), int(split[5]), 0)
 
 		reqUrlReplaced = inputLine['requestUrl'].replace('.', '_')
@@ -281,7 +276,6 @@ class Helper(object):
 					pass
 				else:
 					raise e
-
 
 		#### Setup bulk stream ####
 		bulk = self.OutputMongoDB.initialize_unordered_bulk_op()
@@ -312,12 +306,6 @@ class Helper(object):
 			bulk.find({'_id': key}).update_one({'$inc': { 'metric_login.normal.counter': 1 }})
 			loginResult = 'normal'
 
-
-
-
-
-
-
 		#### Add querystring param ####
 		analysed_param = list()
 		if len(queryString) > 0:
@@ -346,14 +334,12 @@ class Helper(object):
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.' + pValue + '.counter': 1}})
 					bulk.find({'_id': key}).update_one({'$inc': { 'metric_param.' + pKey + '.counter': 1}})
 
-
 					analysed_param.append({
 						'key': pKey,
 						'characters': chars,
 						'length': len(pValue),
 						'type': paramType
 					})
-
 
 		#### Execute bulk statement ####
 		try:
@@ -363,9 +349,7 @@ class Helper(object):
 
 
 		#### See self.py for details on functions ####
-		deltaTime = self.makeTimeline(key, otherKey)
 		self.calulateAvgSize(key, otherKey, inputLine['size'])
-
 
 		self.calculateRatio(key, 'metric_agent')
 		self.calculateRatio(key, 'metric_time')
@@ -381,14 +365,7 @@ class Helper(object):
 		if typeProfile == TYPE.APP:
 			self.calculateRatio(key, 'metric_location')
 
-
-
 		if script == SCRIPT.FIREWALL:
-
-
-
-
-
 			return {
 				'key': key,
 				'otherkey': otherKey,
@@ -405,10 +382,7 @@ class Helper(object):
 				'metric_ext': self.getFileType(inputLine['requestUrl']),
 				'metric_request': inputLine['requestUrl'].replace('.', '_'),
 				'metric_conn': otherKey,
-
 				'metric_size': inputLine['size'],
-				'metric_timespent': deltaTime,
-
-
+				'metric_timespent': self.makeTimeline(key, otherKey),
 				'analysed_param': analysed_param
 			}

@@ -94,7 +94,6 @@ with open(options.log) as fileobject:
 			if index == endIndex:
 				continue
 
-
 		progressBarObj.update(index)
 
 

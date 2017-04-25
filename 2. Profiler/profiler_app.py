@@ -87,6 +87,7 @@ def processLine(start, index):
 threads, progress = [], []
 startRange = int(options.startIndex)
 endRange = int(options.linesPerThread)
+
 intLinesPerThread = int(options.linesPerThread)
 loops = int(math.ceil(float(diffLines) / float(intLinesPerThread)))
 
