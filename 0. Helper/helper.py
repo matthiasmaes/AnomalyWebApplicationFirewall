@@ -200,7 +200,6 @@ class Helper(object):
 
 		except KeyError:
 			newMin = newVal
-
 		finally:
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.min': int(newMin)}})
 
@@ -208,10 +207,8 @@ class Helper(object):
 		try:
 			orgMax =self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['max']
 			newMax = newVal if newVal > orgMax else orgMax
-
 		except KeyError:
 			newMax = newVal
-
 		finally:
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.max': int(newMax)}})
 
@@ -220,10 +217,8 @@ class Helper(object):
 		try:
 			orgAvg = self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['average']
 			newAvg = (orgAvg * (counter - 1) + newVal) / counter
-
 		except KeyError:
 			newAvg = newVal
-
 		except Exception as e:
 			print e
 
@@ -235,10 +230,8 @@ class Helper(object):
 		try:
 			orgDeviation = math.pow((self.OutputMongoDB.find_one({ '_id' : identifier })[metric][otherIdentifier]['deviation']),2)
 			newDeviation = (((counter-1) * orgDeviation) + (newVal - newAvg) * (newVal - orgAvg)) / (counter)
-
 		except KeyError:
 			newDeviation = 0
-
 		finally:
 			self.OutputMongoDB.update_one({ '_id' : identifier }, { '$set' : {metric + '.' + otherIdentifier + '.deviation': math.sqrt(int(newDeviation))}})
 
