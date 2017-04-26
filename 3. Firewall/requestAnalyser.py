@@ -156,7 +156,6 @@ def anomaly_GeneralDeviation(metric, profileRecord, requestRecord, tmpLastObj):
 		if newValue not in xrange(int(avg - standev),  int(avg + standev)):
 			if newValue in xrange(int(avg - 2 * standev),  int(avg + 2 * standev)):
 				FirewallAlarmException('Value deviates between 1 and 2 sigma form average', metric, 'Value (' + str(newValue) + ') within range: ' + str(avg - 2 * standev) + ' | ' + str(avg + 2 * standev) , SEVERITY.HIGH, tmpLastObj['typeProfile'], tmpLastObj['ip'])
-			# elif newValue in xrange(int(avg - 3 * standev),  int(avg + 3 * standev)):
 			else:
 				FirewallAlarmException('Value deviates more than 2 sigma from average', metric, 'Value (' + str(newValue) + ') outside range: ' + str(avg - 2 * standev) + ' | ' + str(avg + 2 * standev) , SEVERITY.CRITICAL, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
@@ -183,9 +182,6 @@ def anomaly_ParamAnomaly (profileRecord, requestRecord, tmpLastObj):
 	for analysedParam in tmpLastObj['analysed_param']:
 		diff = int(requestRecord['metric_param'][analysedParam['key']]['counter']) - int(profileRecord['metric_param'][analysedParam['key']]['counter'])
 		if threshold_counter < diff: FirewallAlarmException('Counter exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
-
-		# diff = float(requestRecord['metric_param'][analysedParam['key']]['ratio']) - float(profileRecord['metric_param'][analysedParam['key']]['ratio'])
-		# if -threshold_ratio <= diff <= threshold_ratio: FirewallAlarmException('Param exceeded', 'metric_param', diff, SEVERITY.LOW, tmpLastObj['typeProfile'], tmpLastObj['ip'])
 
 
 def anomaly_ParamAnalyzed (profileRecord, analysedParam):
@@ -259,7 +255,6 @@ if __name__ == '__main__':
 				## App filtering
 				print '\n----- App analysis -----'
 				tmpLastObj = helperObj.processLineCombined(TYPE.APP, SCRIPT.FIREWALL, lineObj, options)
-
 
 				if ProfileAppMongoDB.find({'_id': helperObj.getUrlWithoutQuery(lineObj['requestUrl'])}).count() > 0:
 					startAnomalyDetection(lineObj, ProfileAppMongoDB.find_one({'_id': helperObj.getUrlWithoutQuery(lineObj['requestUrl'])}), tmpLastObj, TYPE.APP)

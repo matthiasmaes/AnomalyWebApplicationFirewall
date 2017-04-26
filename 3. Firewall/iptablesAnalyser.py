@@ -7,7 +7,6 @@ index = 0
 
 for rule in chain.rules:
 	index += 1
-	print index
 	for match in rule.matches:
 		if match.comment != None:
 			datetime_object = datetime.strptime(match.comment, "%y-%m-%d %H:%M:%S")
